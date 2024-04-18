@@ -302,7 +302,7 @@ Semaphore & Shared memory management
 */
 
 int allocate_shm( char *shm_name, size_t size ) {
-    int shm_fd = shm_open( shm_name, O_CREAT | O_RDWR, 0666 );
+    int shm_fd = shm_open( shm_name, O_CREAT | O_EXCL | O_RDWR, 0666 );
     if ( shm_fd == -1 ) {
         loginfo( "failed to allocate shared memory" );
         return -1;
