@@ -26,6 +26,15 @@ struct arguments {
 };
 typedef struct arguments arguments_t;
 
+/*
+Synchronized journal
+*/
+struct journal {
+    sem_t *lock;
+    int message_incr;
+};
+typedef struct journal journal_t;
+
 struct skibus {
     int capacity;
     int capacity_taken;
@@ -46,13 +55,19 @@ Load and validate CLI arguments. Ends program execution on invalid arguments.
 */
 void load_args( arguments_t *args );
 
+/*
+Initialize a synchronized journal
+*/
+int init_journal( journal_t *journal );
+void destroy_journal( journal_t *journal );
+void journal_bus(journal_t *journal, char *actor, char *message);
+void journal_skier(journal_t *journal, int skier_id, char *message);
+
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
 
-void log_action( char *actor, char *message );
-
-void skibus_process( ski_resort_t *resort );
-void skier_process( int skier_id, int stop, int max_time_to_get_to_stop );
+void skibus_process( ski_resort_t *resort, journal_t *journal );
+void skier_process( int skier_id, int stop, int max_time_to_get_to_stop, journal_t *journal );
 
 int allocate_shm( char *shm_name );
 void destroy_shm( char *shm_name );
@@ -67,6 +82,11 @@ int main() {
     arguments_t args;
     load_args( &args );
 
+    journal_t journal;
+    if (init_journal(&journal) == -1) {
+        exit( EXIT_FAILURE );
+    }
+
     ski_resort_t resort;
     if ( init_ski_resort( &args, &resort ) == -1 ) {
         exit( EXIT_FAILURE );
@@ -76,10 +96,11 @@ int main() {
     pid_t skibus_p = fork();
     if ( skibus_p < 0 ) {
         perror( "fork skibus" );
+        destroy_journal( &journal );
         destroy_ski_resort( &resort );
         exit( EXIT_FAILURE );
     } else if ( skibus_p == 0 ) {
-        skibus_process( &resort );
+        skibus_process( &resort, &journal );
     }
 
     // Create skiers processes
@@ -89,10 +110,11 @@ int main() {
         pid_t skier_p = fork();
         if ( skier_p < 0 ) {
             perror( "fork skier" );
+            destroy_journal( &journal );
             destroy_ski_resort( &resort );
             exit( EXIT_FAILURE );
         } else if ( skier_p == 0 ) {
-            skier_process( i, stop, args.max_time_to_get_to_stop );
+            skier_process( i, stop, args.max_time_to_get_to_stop, &journal );
         }
     }
 
@@ -106,6 +128,7 @@ int main() {
         loginfo( "process %i has ended", child_pid );
     }
 
+    destroy_journal( &journal );
     destroy_ski_resort( &resort );
 
     return EXIT_SUCCESS;
@@ -124,6 +147,47 @@ void load_args( arguments_t *args ) {
     args->bus_capacity = 2;
     args->max_time_to_get_to_stop = 1000 * 1000 * 1;  // 1 second
     args->max_time_between_stops = 1000 * 1000 * 1;   // 1 second
+}
+
+static char *journal_name = "logger";
+
+int init_journal( journal_t *journal ) {
+    journal->message_incr = 1;
+
+    int shm_fd = allocate_shm(journal_name); 
+    if ( shm_fd == -1) {
+        return -1;
+    }
+    if ( allocate_semaphore( shm_fd, &journal->lock ) == -1 ) {
+        destroy_shm(journal_name);
+        return -1;
+    }
+    return 0;
+}
+
+void destroy_journal( journal_t *journal ) {
+    if (journal == NULL) return;
+
+    destroy_semaphore(&journal->lock);
+    destroy_shm(journal_name);
+}
+
+void journal_bus(journal_t *journal, char *actor, char *message) {
+    sem_wait(journal->lock);
+    
+    printf( "%i: %s: %s\n", journal->message_incr, actor, message );
+    journal->message_incr++;
+
+    sem_post(journal->lock);
+}
+
+void journal_skier(journal_t *journal, int skier_id, char *message) {
+    sem_wait(journal->lock);
+    
+    printf( "%i: L %i: %s\n", journal->message_incr, skier_id, message );
+    journal->message_incr++;
+
+    sem_post(journal->lock);
 }
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
@@ -169,7 +233,9 @@ void log_action( char *actor, char *message ) {
     log_id++;
 }
 
-void skibus_process( ski_resort_t *resort ) {
+void skibus_process( ski_resort_t *resort, journal_t *journal ) {
+    journal_bus(journal, "BUS", "started");
+
     printf( "skibus: %i %i %i\n", resort->bus.capacity, resort->stops_amount,
             resort->bus.max_time_to_next_stop );
     // TODO: Start
@@ -181,9 +247,10 @@ void skibus_process( ski_resort_t *resort ) {
     exit( 0 );
 }
 
-void skier_process( int skier_id, int stop, int max_time_to_get_to_stop ) {
-    int time_to_stop = rand_number( max_time_to_get_to_stop );
+void skier_process( int skier_id, int stop, int max_time_to_get_to_stop, journal_t *journal ) {
+    journal_skier(journal, skier_id, "started");
 
+    int time_to_stop = rand_number( max_time_to_get_to_stop );
     usleep( time_to_stop );
 
     printf( "skier %i on stop %i, %i\n", skier_id, stop, time_to_stop );
