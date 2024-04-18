@@ -156,19 +156,18 @@ static char *journal_incrementer_name = "journal_incr";
 int init_journal( journal_t *journal ) {
     int incr_shm_fd = allocate_shm( journal_incrementer_name, sizeof( int ) );
     if ( incr_shm_fd == -1 ) {
-        loginfo("failed to allocate logger shared incr");
+        loginfo( "failed to allocate logger shared incr" );
         return -1;
     }
 
     journal->message_incr = mmap( NULL, sizeof( int ), PROT_READ | PROT_WRITE,
                                   MAP_SHARED, incr_shm_fd, 0 );
 
-    // TODO: for some reason, this assignment is not effective. (counting starts from 0)
-    (*journal->message_incr) = 1;
+    ( *journal->message_incr ) = 1;
 
     int sem_shm_fd = allocate_shm( journal_name, sizeof( sem_t ) );
     if ( sem_shm_fd == -1 ) {
-        loginfo("failed to allocate logger shared semaphore");
+        loginfo( "failed to allocate logger shared semaphore" );
         destroy_shm( journal_incrementer_name );
         return -1;
     }
@@ -194,7 +193,7 @@ void journal_bus( journal_t *journal, char *message ) {
     sem_wait( journal->lock );
 
     printf( "%i: BUS: %s\n", *journal->message_incr, message );
-    (*journal->message_incr)++;
+    ( *journal->message_incr )++;
 
     sem_post( journal->lock );
 }
@@ -203,7 +202,7 @@ void journal_skier( journal_t *journal, int skier_id, char *message ) {
     sem_wait( journal->lock );
 
     printf( "%i: L %i: %s\n", *journal->message_incr, skier_id, message );
-    (*journal->message_incr)++;
+    ( *journal->message_incr )++;
 
     sem_post( journal->lock );
 }
@@ -255,7 +254,7 @@ void skibus_process( ski_resort_t *resort, journal_t *journal ) {
         usleep( time_to_next_stop );
         stop_id++;
 
-        journal_bus( journal, "arrived to X");
+        journal_bus( journal, "arrived to X" );
 
         bool reached_finish = stop_id == resort->stops_amount;
         if ( reached_finish ) {
