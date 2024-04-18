@@ -1,4 +1,4 @@
-// #define NDEBUG
+#define NDEBUG
 
 #include <fcntl.h>
 #include <semaphore.h>
@@ -61,7 +61,10 @@ Initialize a synchronized journal
 int init_journal( journal_t *journal );
 void destroy_journal( journal_t *journal );
 void journal_bus( journal_t *journal, char *message );
+void journal_bus_arrival( journal_t *journal, int stop );
 void journal_skier( journal_t *journal, int skier_id, char *message );
+void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
+                                    int stop_id );
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
@@ -198,10 +201,30 @@ void journal_bus( journal_t *journal, char *message ) {
     sem_post( journal->lock );
 }
 
+void journal_bus_arrival( journal_t *journal, int stop ) {
+    sem_wait( journal->lock );
+
+    printf( "%i: BUS: arrived to %i\n", *journal->message_incr, stop );
+    ( *journal->message_incr )++;
+
+    sem_post( journal->lock );
+}
+
 void journal_skier( journal_t *journal, int skier_id, char *message ) {
     sem_wait( journal->lock );
 
     printf( "%i: L %i: %s\n", *journal->message_incr, skier_id, message );
+    ( *journal->message_incr )++;
+
+    sem_post( journal->lock );
+}
+
+void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
+                                    int stop_id ) {
+    sem_wait( journal->lock );
+
+    printf( "%i: L %i: arrived at %i\n", *journal->message_incr, skier_id,
+            stop_id );
     ( *journal->message_incr )++;
 
     sem_post( journal->lock );
@@ -254,12 +277,13 @@ void skibus_process( ski_resort_t *resort, journal_t *journal ) {
         usleep( time_to_next_stop );
         stop_id++;
 
-        journal_bus( journal, "arrived to X" );
+        journal_bus_arrival( journal, stop_id );
 
         bool reached_finish = stop_id == resort->stops_amount;
         if ( reached_finish ) {
             // TODO: finish if no skiers left
             // TODO: make a round trip if there are still some
+            journal_bus( journal, "leaving final" );
             break;
         } else {
             // TODO: if stop has waiting skier, let 1 in & wait for him to get
@@ -270,7 +294,6 @@ void skibus_process( ski_resort_t *resort, journal_t *journal ) {
 
     journal_bus( journal, "finish" );
 
-    // TODO: Ride to next stop(wait for some time)
     // TODO: Allow skiers to get in, repeat until all stops were visited
     // TODO: Arrive to the ski resort and let skiers out
     // TODO: If there are still skiers left, repeat
@@ -285,7 +308,7 @@ void skier_process( int skier_id, int stop, int max_time_to_get_to_stop,
     int time_to_stop = rand_number( max_time_to_get_to_stop );
     usleep( time_to_stop );
 
-    printf( "skier %i on stop %i, %i\n", skier_id, stop, time_to_stop );
+    journal_skier_arrived_to_stop(journal, skier_id, stop);
 
     // TODO: Wait for a skibus to arrive to a stop
     // TODO: Try to get in, if failed, keep waiting?
