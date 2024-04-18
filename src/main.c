@@ -151,7 +151,7 @@ void load_args( arguments_t *args ) {
 }
 
 static char *journal_name = "journal";
-static char *journal_incrementer_name = "journal";
+static char *journal_incrementer_name = "journal_incr";
 
 int init_journal( journal_t *journal ) {
     int incr_shm_fd = allocate_shm( journal_incrementer_name, sizeof( int ) );
@@ -222,7 +222,7 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
         return -1;
 
     for ( int i = 0; i < resort->stops_amount; i++ ) {
-        // TODO: init but stops semaphores
+        // TODO: init bus stops semaphores
     }
 
     return 0;
