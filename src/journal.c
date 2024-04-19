@@ -25,12 +25,12 @@ int init_journal( journal_t *journal ) {
 
     int sem_shm_fd = allocate_shm( journal_name, sizeof( sem_t ) );
     if ( sem_shm_fd == -1 ) {
-        destroy_shm( journal_incrementer_name );
+        free_shm( journal_incrementer_name );
         return -1;
     }
     if ( allocate_semaphore( sem_shm_fd, &journal->lock, 1 ) == -1 ) {
-        destroy_shm( journal_incrementer_name );
-        destroy_shm( journal_name );
+        free_shm( journal_incrementer_name );
+        free_shm( journal_name );
         return -1;
     }
     return 0;
@@ -40,10 +40,10 @@ void destroy_journal( journal_t *journal ) {
     if ( journal == NULL )
         return;
 
-    destroy_shm( journal_incrementer_name );
+    free_shm( journal_incrementer_name );
 
-    destroy_semaphore( &journal->lock );
-    destroy_shm( journal_name );
+    free_semaphore( &journal->lock );
+    free_shm( journal_name );
 }
 
 void journal_bus( journal_t *journal, char *message ) {
@@ -79,6 +79,24 @@ void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
 
     printf( "%i: L %i: arrived at %i\n", *journal->message_incr, skier_id,
             stop_id );
+    ( *journal->message_incr )++;
+
+    sem_post( journal->lock );
+}
+
+void journal_skier_boarding( journal_t *journal, int skier_id ) {
+    sem_wait( journal->lock );
+
+    printf( "%i: L %i: boarding\n", *journal->message_incr, skier_id );
+    ( *journal->message_incr )++;
+
+    sem_post( journal->lock );
+}
+
+void journal_skier_going_to_ski( journal_t *journal, int skier_id ) {
+    sem_wait( journal->lock );
+
+    printf( "%i: L %i: going to ski\n", *journal->message_incr, skier_id );
     ( *journal->message_incr )++;
 
     sem_post( journal->lock );

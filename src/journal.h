@@ -19,5 +19,7 @@ void journal_bus_arrival( journal_t *journal, int stop );
 void journal_skier( journal_t *journal, int skier_id, char *message );
 void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
                                     int stop_id );
+void journal_skier_boarding( journal_t *journal, int skier_id );
+void journal_skier_going_to_ski( journal_t *journal, int skier_id );
 
 #endif

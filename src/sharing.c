@@ -26,7 +26,7 @@ int allocate_shm( char *shm_name, size_t size ) {
     return shm_fd;
 }
 
-void destroy_shm( char *shm_name ) { shm_unlink( shm_name ); }
+void free_shm( char *shm_name ) { shm_unlink( shm_name ); }
 
 int allocate_semaphore( int shm_fd, sem_t **sem, int value ) {
     *sem = mmap( NULL, sizeof( sem_t ), PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -45,4 +45,23 @@ int allocate_semaphore( int shm_fd, sem_t **sem, int value ) {
     return 0;
 }
 
-void destroy_semaphore( sem_t **sem ) { sem_destroy( *sem ); }
+void free_semaphore( sem_t **sem ) { sem_destroy( *sem ); }
+
+int init_semaphore(sem_t **sem, int val, char *shm_name) {
+    int shm_fd = allocate_shm(shm_name, sizeof(sem_t));
+    if (shm_fd == -1) {
+        perror("allocate_shm");
+        return -1;
+    }
+    if (allocate_semaphore(shm_fd, sem, val) == -1) {
+        free_shm(shm_name);
+        perror("allocate_semaphore");
+        return -1;
+    }
+    return 0;
+}
+
+void destroy_semaphore(sem_t **sem, char *shm_name) {
+    free_semaphore( sem );
+    free_shm( shm_name );
+}
