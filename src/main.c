@@ -1,11 +1,8 @@
 #define NDEBUG
 
-#include <fcntl.h>
-#include <semaphore.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -46,6 +43,9 @@ struct ski_resort {
 };
 typedef struct ski_resort ski_resort_t;
 
+// Get a random number betwen 0 and the parameter max
+int rand_number( int max ) { return ( rand() % max ) + 1; }
+
 /*
 Load and validate CLI arguments. Ends program execution on invalid arguments.
 */
@@ -59,20 +59,19 @@ void skibus_process( ski_resort_t *resort, journal_t *journal );
 void skier_process( ski_resort_t *resort, int skier_id, int stop,
                     journal_t *journal );
 
-// Get a random number betwen 0 and the parameter max
-int rand_number( int max ) { return ( rand() % max ) + 1; }
-
 int main() {
     arguments_t args;
     load_args( &args );
 
     journal_t journal;
     if ( init_journal( &journal ) == -1 ) {
+        perror( "init_journal" );
         exit( EXIT_FAILURE );
     }
 
     ski_resort_t resort;
     if ( init_ski_resort( &args, &resort ) == -1 ) {
+        perror( "init_ski_resort" );
         exit( EXIT_FAILURE );
     }
 
@@ -215,7 +214,7 @@ void destroy_ski_resort( ski_resort_t *resort ) {
 
 /*
 
-Processes
+Processes behavior
 
 */
 
