@@ -140,11 +140,11 @@ Program configuration
 
 void load_args( arguments_t *args ) {
     // TODO: validate inputs
-    args->skiers_amount = 1;
-    args->stops_amount = 3;
-    args->bus_capacity = 2;
-    args->max_time_to_get_to_stop = 1000 * 1000 * 1;  // 1 second
-    args->max_time_between_stops = 1000 * 1000 * 1;   // 1 second
+    args->skiers_amount = 5;
+    args->stops_amount = 10;
+    args->bus_capacity = 10;
+    args->max_time_to_get_to_stop = 1000 * 1;        // 1 second
+    args->max_time_between_stops = 1000 * 1000 * 1;  // 1 second
 }
 
 static char *SKIBUS_SHM_CAPACITY_TAKEN_NAME = "/skibus_cap_taken";
@@ -299,7 +299,7 @@ Processes behavior
 */
 
 void let_skibus_passengers_out( ski_resort_t *resort ) {
-    loginfo("bus has %i passengers", *resort->bus.capacity_taken);
+    loginfo( "bus has %i passengers", *resort->bus.capacity_taken );
     while ( *resort->bus.capacity_taken > 0 ) {
         // Allow 1 skier out
         sem_post( resort->bus.sem_out );
@@ -325,13 +325,13 @@ void board_passengers( ski_resort_t *resort, int stop_idx ) {
         loginfo( "fit_more:%i, skier_waiting:%i", can_fit_more_skiers,
                  has_skiers_waiting );
 
-        if (can_fit_more_skiers && has_skiers_waiting) {
+        if ( can_fit_more_skiers && has_skiers_waiting ) {
             sem_post( bus_stop->wait_lock );
             ( *resort->bus.capacity_taken )++;
             sem_wait( resort->bus.sem_in_done );
             loginfo( "passenger got into the bus" );
         }
-        break;     
+        break;
     }
 }
 
@@ -353,10 +353,16 @@ void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
     }
 
     let_skibus_passengers_out( resort );
+
+    journal_bus( journal, "arrived final" );
+    int time_to_next_stop = rand_number( bus->max_time_to_next_stop );
+    usleep( time_to_next_stop );
     journal_bus( journal, "leaving final" );
 }
 
 void skibus_process( ski_resort_t *resort, journal_t *journal ) {
+    sleep( 2 );
+
     journal_bus( journal, "started" );
 
     // TODO: make a round trip if there are still some skiers left
