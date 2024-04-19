@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-std=gnu99 -Wall -Wextra -Werror -pedantic
+CFLAGS=-std=gnu99 -Wall -Wextra -Werror -pedantic src/journal.c src/sharing.c
 
 default: build
 
