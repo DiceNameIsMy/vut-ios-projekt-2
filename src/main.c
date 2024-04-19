@@ -31,6 +31,7 @@ struct skibus {
     int capacity_taken;
     int max_time_to_next_stop;
     sem_t *sem_in_done;
+    sem_t *sem_skiers_inside;
 };
 typedef struct skibus skibus_t;
 
@@ -133,22 +134,39 @@ void load_args( arguments_t *args ) {
 }
 
 static char *skibus_shm_in_done_name = "/skibus_in_done";
+static char *skibus_shm_skiers_inside_name = "/skibus_skiers_inside";
 
 int init_skibus( skibus_t *bus, arguments_t *args ) {
     bus->capacity = args->bus_capacity;
     bus->capacity_taken = 0;
     bus->max_time_to_next_stop = args->max_time_between_stops;
 
-    int shm_fd = allocate_shm( skibus_shm_in_done_name, sizeof( sem_t ) );
-    if ( shm_fd == -1 ) {
+    int shm_in_done_fd = allocate_shm( skibus_shm_in_done_name, sizeof( sem_t ) );
+    if ( shm_in_done_fd == -1 ) {
         return -1;
     }
 
-    allocate_semaphore( shm_fd, &bus->sem_in_done, 0 );
+    allocate_semaphore( shm_in_done_fd, &bus->sem_in_done, 0 );
     if ( bus->sem_in_done == NULL ) {
         destroy_shm( skibus_shm_in_done_name );
         return -1;
     }
+
+    int shm_skiers_inside_fd = allocate_shm( skibus_shm_in_done_name, sizeof( sem_t ) );
+    if ( shm_skiers_inside_fd == -1 ) {
+        destroy_semaphore( &bus->sem_skiers_inside );
+        destroy_shm( skibus_shm_in_done_name );
+        return -1;
+    }
+
+    allocate_semaphore( shm_skiers_inside_fd, &bus->sem_skiers_inside, 0 );
+    if ( bus->sem_skiers_inside == NULL ) {
+        destroy_semaphore( &bus->sem_in_done );
+        destroy_shm( skibus_shm_in_done_name );
+        destroy_shm( skibus_shm_skiers_inside_name );
+        return -1;
+    }
+
     return 0;
 }
 
@@ -158,6 +176,9 @@ void destroy_skibus( skibus_t *bus ) {
 
     destroy_semaphore( &bus->sem_in_done );
     destroy_shm( skibus_shm_in_done_name );
+
+    destroy_semaphore( &bus->sem_skiers_inside );
+    destroy_shm( skibus_shm_skiers_inside_name );
 }
 
 static char *shm_bus_stop_format = "/bus_stop_%i";
@@ -262,6 +283,9 @@ void skier_process( ski_resort_t *resort, int skier_id, int stop,
     usleep( time_to_stop );
 
     journal_skier_arrived_to_stop( journal, skier_id, stop );
+
+    // sem_wait(resort->stops[stop]);
+    // resort->bus.capacity_taken++;
     // increment amount of skiers at the bus stop
 
     // sem_wait(resort->stops[stop]);
