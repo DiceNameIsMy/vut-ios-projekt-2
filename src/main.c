@@ -39,6 +39,7 @@ struct skibus {
     int capacity;
     int capacity_taken;
     int max_time_to_next_stop;
+    sem_t *sem_in_done;
 };
 typedef struct skibus skibus_t;
 
@@ -67,6 +68,7 @@ void journal_skier( journal_t *journal, int skier_id, char *message );
 void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
                                     int stop_id );
 
+int init_skibus( skibus_t *bus, arguments_t *args );
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
 
@@ -231,15 +233,40 @@ void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
     sem_post( journal->lock );
 }
 
+static char *skibus_shm_in_done_name = "/skibus_in_done";
+
+int init_skibus( skibus_t *bus, arguments_t *args ) {
+    bus->capacity = args->bus_capacity;
+    bus->capacity_taken = 0;
+    bus->max_time_to_next_stop = args->max_time_between_stops;
+
+    int shm_fd = allocate_shm( skibus_shm_in_done_name, sizeof( sem_t ) );
+    if ( shm_fd == -1 ) {
+        return -1;
+    }
+
+    allocate_semaphore( shm_fd, &bus->sem_in_done, 0 );
+    if ( bus->sem_in_done == NULL ) {
+        destroy_shm( skibus_shm_in_done_name );
+        return -1;
+    }
+    return 0;
+}
+
+void destroy_skibus( skibus_t *bus ) {
+    if ( bus == NULL )
+        return;
+
+    destroy_semaphore( &bus->sem_in_done );
+    destroy_shm( skibus_shm_in_done_name );
+}
+
 static char *shm_bus_stop_format = "/bus_stop_%i";
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
-    skibus_t bus;
-    bus.capacity = args->bus_capacity;
-    bus.capacity_taken = 0;
-    bus.max_time_to_next_stop = args->max_time_between_stops;
-
-    resort->bus = bus;
+    if ( init_skibus( &resort->bus, args ) == -1 ) {
+        return -1;
+    }
     resort->max_time_to_get_to_stop = args->max_time_to_get_to_stop;
     resort->stops_amount = args->stops_amount;
     resort->stops = (sem_t **)malloc( sizeof( sem_t ) * resort->stops_amount );
@@ -272,6 +299,8 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
 void destroy_ski_resort( ski_resort_t *resort ) {
     if ( resort == NULL )
         return;
+
+    destroy_skibus(&resort->bus);
 
     for ( int i = 0; i < resort->stops_amount; i++ ) {
         destroy_semaphore( &resort->stops[ i ] );
@@ -352,6 +381,11 @@ Semaphore & Shared memory management
 
 int allocate_shm( char *shm_name, size_t size ) {
     int shm_fd = shm_open( shm_name, O_CREAT | O_EXCL | O_RDWR, 0666 );
+    if (shm_fd == -1) {
+        loginfo("failed to create shared memory. using the existing one");
+        shm_fd = shm_open( shm_name, O_CREAT | O_RDWR, 0666 );
+    }
+
     if ( shm_fd == -1 ) {
         loginfo( "failed to allocate shared memory" );
         return -1;
