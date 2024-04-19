@@ -1,3 +1,5 @@
+#include "journal.h"
+
 #include <semaphore.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -6,7 +8,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "journal.h"
 #include "sharing.h"
 
 static char *journal_name = "journal";
@@ -55,10 +56,10 @@ void journal_bus( journal_t *journal, char *message ) {
     sem_post( journal->lock );
 }
 
-void journal_bus_arrival( journal_t *journal, int stop ) {
+void journal_bus_arrival( journal_t *journal, int stop_id ) {
     sem_wait( journal->lock );
 
-    printf( "%i: BUS: arrived to %i\n", *journal->message_incr, stop );
+    printf( "%i: BUS: arrived to %i\n", *journal->message_incr, stop_id );
     ( *journal->message_incr )++;
 
     sem_post( journal->lock );
