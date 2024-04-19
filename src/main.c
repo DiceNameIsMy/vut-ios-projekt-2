@@ -45,8 +45,9 @@ typedef struct skibus skibus_t;
 struct ski_resort {
     skibus_t bus;
 
+    int max_time_to_get_to_stop;
     int stops_amount;
-    sem_t *stops;
+    sem_t **stops;
 };
 typedef struct ski_resort ski_resort_t;
 
@@ -56,7 +57,7 @@ Load and validate CLI arguments. Ends program execution on invalid arguments.
 void load_args( arguments_t *args );
 
 /*
-Initialize a synchronized journal
+Initialize a synchronized journal. Return -1 on error. 0 otherwise.
 */
 int init_journal( journal_t *journal );
 void destroy_journal( journal_t *journal );
@@ -70,13 +71,13 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
 
 void skibus_process( ski_resort_t *resort, journal_t *journal );
-void skier_process( int skier_id, int stop, int max_time_to_get_to_stop,
+void skier_process( ski_resort_t *resort, int skier_id, int stop,
                     journal_t *journal );
 
 int allocate_shm( char *shm_name, size_t size );
 void destroy_shm( char *shm_name );
 
-int allocate_semaphore( int shm_fd, sem_t **sem );
+int allocate_semaphore( int shm_fd, sem_t **sem, int value );
 void destroy_semaphore( sem_t **sem );
 
 // Get a random number betwen 0 and the parameter max
@@ -118,7 +119,8 @@ int main() {
             destroy_ski_resort( &resort );
             exit( EXIT_FAILURE );
         } else if ( skier_p == 0 ) {
-            skier_process( i, stop, args.max_time_to_get_to_stop, &journal );
+            int skier_id = i + 1;
+            skier_process( &resort, skier_id, stop, &journal );
         }
     }
 
@@ -129,7 +131,6 @@ int main() {
         if ( child_pid == -1 ) {
             break;
         }
-        loginfo( "process %i has ended", child_pid );
     }
 
     destroy_journal( &journal );
@@ -146,7 +147,7 @@ Program configuration
 
 void load_args( arguments_t *args ) {
     // TODO: validate inputs
-    args->skiers_amount = 5;
+    args->skiers_amount = 10;
     args->stops_amount = 3;
     args->bus_capacity = 2;
     args->max_time_to_get_to_stop = 1000 * 1000 * 1;  // 1 second
@@ -174,7 +175,7 @@ int init_journal( journal_t *journal ) {
         destroy_shm( journal_incrementer_name );
         return -1;
     }
-    if ( allocate_semaphore( sem_shm_fd, &journal->lock ) == -1 ) {
+    if ( allocate_semaphore( sem_shm_fd, &journal->lock, 1 ) == -1 ) {
         destroy_shm( journal_incrementer_name );
         destroy_shm( journal_name );
         return -1;
@@ -230,6 +231,8 @@ void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
     sem_post( journal->lock );
 }
 
+static char *shm_bus_stop_format = "/bus_stop_%i";
+
 int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     skibus_t bus;
     bus.capacity = args->bus_capacity;
@@ -237,14 +240,30 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     bus.max_time_to_next_stop = args->max_time_between_stops;
 
     resort->bus = bus;
-    resort->stops_amount = args->skiers_amount;
-    resort->stops = (sem_t *)malloc( sizeof( sem_t ) * resort->stops_amount );
+    resort->max_time_to_get_to_stop = args->max_time_to_get_to_stop;
+    resort->stops_amount = args->stops_amount;
+    resort->stops = (sem_t **)malloc( sizeof( sem_t ) * resort->stops_amount );
 
     if ( resort->stops == NULL )
         return -1;
 
     for ( int i = 0; i < resort->stops_amount; i++ ) {
-        // TODO: init bus stops semaphores
+        char shm_name[ 20 ];
+        sprintf( shm_name, shm_bus_stop_format, i );
+
+        int shm_fd = allocate_shm( shm_name, sizeof( sem_t ) );
+        if ( shm_fd == -1 ) {
+            free( resort->stops );
+            // TODO: reverse memory allocation
+            return -1;
+        }
+
+        allocate_semaphore( shm_fd, &resort->stops[ i ], 0 );
+        if ( resort->stops[ i ] == NULL ) {
+            free( resort->stops );
+            // TODO: reverse memory allocation
+            return -1;
+        }
     }
 
     return 0;
@@ -254,7 +273,13 @@ void destroy_ski_resort( ski_resort_t *resort ) {
     if ( resort == NULL )
         return;
 
-    // TODO: destroy bus stops semaphores
+    for ( int i = 0; i < resort->stops_amount; i++ ) {
+        destroy_semaphore( &resort->stops[ i ] );
+
+        char shm_name[ 20 ];
+        sprintf( shm_name, shm_bus_stop_format, i );
+        destroy_shm( shm_name );
+    }
 
     free( resort->stops );
 }
@@ -301,19 +326,21 @@ void skibus_process( ski_resort_t *resort, journal_t *journal ) {
     exit( EXIT_SUCCESS );
 }
 
-void skier_process( int skier_id, int stop, int max_time_to_get_to_stop,
+void skier_process( ski_resort_t *resort, int skier_id, int stop,
                     journal_t *journal ) {
     journal_skier( journal, skier_id, "started" );
 
-    int time_to_stop = rand_number( max_time_to_get_to_stop );
+    int time_to_stop = rand_number( resort->max_time_to_get_to_stop );
     usleep( time_to_stop );
 
-    journal_skier_arrived_to_stop(journal, skier_id, stop);
+    journal_skier_arrived_to_stop( journal, skier_id, stop );
+    // sem_wait(resort->stops[stop]);
+    // sem_post(resort->bus.in_done);
+    // sem_wait(resort->bus.out);
+    // sem_post(resort->bus.out_done);
+    // journal_skier_boarding( journal, skier_id, stop );
+    // journal_skier_going_to_ski( journal, skier_id, stop );
 
-    // TODO: Wait for a skibus to arrive to a stop
-    // TODO: Try to get in, if failed, keep waiting?
-    // TODO: Wait for skibus to get to the end
-    // TODO: Go skiing
     exit( 0 );
 }
 
@@ -340,7 +367,7 @@ int allocate_shm( char *shm_name, size_t size ) {
 
 void destroy_shm( char *shm_name ) { shm_unlink( shm_name ); }
 
-int allocate_semaphore( int shm_fd, sem_t **sem ) {
+int allocate_semaphore( int shm_fd, sem_t **sem, int value ) {
     *sem = mmap( NULL, sizeof( sem_t ), PROT_READ | PROT_WRITE, MAP_SHARED,
                  shm_fd, 0 );
     if ( sem == MAP_FAILED ) {
@@ -348,7 +375,7 @@ int allocate_semaphore( int shm_fd, sem_t **sem ) {
         return -1;
     }
 
-    if ( sem_init( *sem, true, 1 ) == -1 ) {
+    if ( sem_init( *sem, true, value ) == -1 ) {
         loginfo( "failed to init a semaphore" );
         sem_destroy( *sem );
         return -1;
