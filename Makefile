@@ -15,9 +15,3 @@ dbg:
 
 dbg-run: dbg
 	./bin/main-dbg
-
-test:
-	$(CC) $(CFLAGS) -g -O0 -DDEBUG src/test.c -o bin/test
-
-test-run: test
-	./bin/test
