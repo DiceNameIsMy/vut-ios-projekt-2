@@ -14,28 +14,30 @@
 /*
 Load and validate CLI arguments. Ends program execution on invalid arguments.
 */
-void load_args( arguments_t *args, int argc, char *argv[] );
+int load_args( arguments_t *args, int argc, char *argv[] );
 
 int main( int argc, char *argv[] ) {
     arguments_t args;
-    load_args( &args, argc, argv );
+    if (load_args( &args, argc, argv ) == -1) {
+        return EXIT_FAILURE;
+    }
 
     journal_t journal;
     if ( init_journal( &journal ) == -1 ) {
-        fprintf( stderr, "init_journal" );
+        fprintf( stderr, "init_journal\n" );
         return EXIT_FAILURE;
     }
 
     ski_resort_t resort;
     if ( init_ski_resort( &args, &resort ) == -1 ) {
-        fprintf( stderr, "init_ski_resort" );
+        fprintf( stderr, "init_ski_resort\n" );
         return EXIT_FAILURE;
     }
 
     // Create skibus process
     pid_t skibus_p = fork();
     if ( skibus_p < 0 ) {
-        fprintf( stderr, "fork skibus" );
+        fprintf( stderr, "fork skibus\n" );
         destroy_journal( &journal );
         destroy_ski_resort( &resort );
         return EXIT_FAILURE;
@@ -48,7 +50,7 @@ int main( int argc, char *argv[] ) {
     for ( int i = 0; i < args.skiers_amount; i++ ) {
         pid_t skier_p = fork();
         if ( skier_p < 0 ) {
-            fprintf( stderr, "fork skier" );
+            fprintf( stderr, "fork skier\n" );
             destroy_journal( &journal );
             destroy_ski_resort( &resort );
             return EXIT_FAILURE;
@@ -86,19 +88,19 @@ int str_to_int_or_exit( char *str ) {
     bool out_of_range =
         ( errno == ERANGE && ( num_long == LONG_MAX || num_long == LONG_MIN ) );
     if ( out_of_range ) {
-        fprintf( stderr, "strtol" );
+        fprintf( stderr, "strtol\n" );
         exit( EXIT_FAILURE );
     }
 
     // Check for empty string or no digits found
     if ( endptr == str ) {
-        fprintf( stderr, "invalid number parameter" );
+        fprintf( stderr, "invalid number parameter\n" );
         exit( EXIT_FAILURE );
     }
 
     // Check for leftover characters after the number
     if ( *endptr != '\0' ) {
-        fprintf( stderr, "invalid number parameter" );
+        fprintf( stderr, "invalid number parameter\n" );
         exit( EXIT_FAILURE );
     }
 
@@ -107,41 +109,43 @@ int str_to_int_or_exit( char *str ) {
 
 enum { ARG_COUNT = 5 };
 
-void load_args( arguments_t *args, int argc, char *argv[] ) {
+int load_args( arguments_t *args, int argc, char *argv[] ) {
     if ( argc != ARG_COUNT + 1 ) {
-        fprintf( stderr, "not enough arguments" );
-        exit( EXIT_FAILURE );
+        fprintf( stderr, "not enough arguments\n" );
+        return -1;
     }
 
     args->skiers_amount = str_to_int_or_exit( argv[ 1 ] );
     if ( args->skiers_amount < 0 || args->skiers_amount >= 20000 ) {
-        fprintf( stderr, "L must be in range 0 < X < 20000" );
-        exit( EXIT_FAILURE );
+        fprintf( stderr, "L must be in range 0 < X < 20000\n" );
+        return -1;
     }
 
     args->stops_amount = str_to_int_or_exit( argv[ 2 ] );
     if ( args->stops_amount <= 0 || args->stops_amount > 10 ) {
-        fprintf( stderr, "Z amount must be in range 0 < X <= 10" );
-        exit( EXIT_FAILURE );
+        fprintf( stderr, "Z amount must be in range 0 < X <= 10\n" );
+        return -1;
     }
 
     args->bus_capacity = str_to_int_or_exit( argv[ 3 ] );
     if ( args->bus_capacity < 10 || args->bus_capacity > 100 ) {
-        fprintf( stderr, "K must be in range 10 <= X <= 100" );
-        exit( EXIT_FAILURE );
+        fprintf( stderr, "K must be in range 10 <= X <= 100\n" );
+        return -1;
     }
 
     args->max_walk_to_stop_time = str_to_int_or_exit( argv[ 4 ] );
     if ( args->max_walk_to_stop_time < 0 ||
          args->max_walk_to_stop_time > 10000 ) {
-        fprintf( stderr, "TL must be in range 0 <= X <= 10000" );
-        exit( EXIT_FAILURE );
+        fprintf( stderr, "TL must be in range 0 <= X <= 10000\n" );
+        return -1;
     }
 
     args->max_ride_to_stop_time = str_to_int_or_exit( argv[ 5 ] );
     if ( args->max_ride_to_stop_time < 0 ||
          args->max_ride_to_stop_time > 1000 ) {
-        fprintf( stderr, "TB must be in range 0 <= X <= 1000" );
-        exit( EXIT_FAILURE );
+        fprintf( stderr, "TB must be in range 0 <= X <= 1000\n" );
+        return -1;
     }
+
+    return 0;
 }
