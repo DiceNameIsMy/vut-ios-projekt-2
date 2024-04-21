@@ -220,7 +220,11 @@ void board_passengers( ski_resort_t *resort, int stop_idx ) {
         // Let 1 skier in
         sem_post( bus_stop->wait_bus_lock );
         ( *resort->bus.capacity_taken )++;
+
+        sem_wait( bus_stop->enter_stop_lock );
         ( *bus_stop->waiting_skiers_amount )--;
+        sem_post( bus_stop->enter_stop_lock );
+
         sem_wait( resort->bus.sem_in_done );
         loginfo( "passenger got into the bus" );
     }
