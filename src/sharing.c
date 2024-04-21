@@ -55,6 +55,10 @@ int allocate_semaphore( int shm_fd, sem_t **sem, int value ) {
 void free_semaphore( sem_t **sem ) { sem_destroy( *sem ); }
 
 int init_semaphore( sem_t **sem, int val, char *shm_name ) {
+    if ( sem == NULL ) {
+        return -1;
+    }
+
     int shm_fd = allocate_shm( shm_name, sizeof( sem_t ) );
     if ( shm_fd == -1 ) {
         return -1;
@@ -73,6 +77,10 @@ void destroy_semaphore( sem_t **sem, char *shm_name ) {
 }
 
 int init_shared_var( void **ppdata, size_t size, char *shm_name ) {
+    if ( ppdata == NULL ) {
+        return -1;
+    }
+
     int shm_fd = allocate_shm( shm_name, size );
     if ( shm_fd == -1 ) {
         return -1;
