@@ -260,12 +260,11 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
     bool ride_again = true;
     while ( ride_again ) {
         drive_skibus( resort, journal );
+        journal_bus( journal, "leaving final" );
         loginfo( "skiers at the resort: %i", resort->skiers_at_resort );
 
         if ( resort->skiers_at_resort >= resort->skiers_amount ) {
             ride_again = false;
-        } else {
-            journal_bus( journal, "leaving final" );
         }
     }
 
