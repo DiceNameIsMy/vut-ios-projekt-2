@@ -31,6 +31,7 @@ struct bus_stop {
 };
 typedef struct bus_stop bus_stop_t;
 
+/// @brief Core struct representing the program's universe.
 struct ski_resort {
     skibus_t bus;
 
@@ -43,13 +44,23 @@ struct ski_resort {
 };
 typedef struct ski_resort ski_resort_t;
 
-// Get a random number betwen 0 and the parameter max(inclusive)
+/// @brief Get a random number between 0 and the parameter max(inclusive)
+/// @param max
+/// @return
 int rand_number( int max );
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
 
+/// @brief Representation of what a skibus does during its lifetime
+/// @param resort A valid pointer to an initialized structure is expected
+/// @param journal A valid pointer to an initialized structure is expected
 void skibus_process_behavior( ski_resort_t *resort, journal_t *journal );
+
+/// @brief Representation of what a skibus does during its lifetime
+/// @param resort A valid pointer to an initialized structure is expected
+/// @param skier_id
+/// @param journal A valid pointer to an initialized structure is expected
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal );
 
