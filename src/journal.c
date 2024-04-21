@@ -14,26 +14,16 @@ static char *journal_name = "journal";
 static char *journal_incrementer_name = "journal_incr";
 
 int init_journal( journal_t *journal ) {
-    int incr_shm_fd = allocate_shm( journal_incrementer_name, sizeof( int ) );
-    if ( incr_shm_fd == -1 ) {
+    if (init_shared_var((void **)&journal->message_incr, sizeof(int), journal_incrementer_name) == -1) {
         return -1;
     }
-
-    journal->message_incr = mmap( NULL, sizeof( int ), PROT_READ | PROT_WRITE,
-                                  MAP_SHARED, incr_shm_fd, 0 );
-
     ( *journal->message_incr ) = 1;
 
-    int sem_shm_fd = allocate_shm( journal_name, sizeof( sem_t ) );
-    if ( sem_shm_fd == -1 ) {
-        free_shm( journal_incrementer_name );
+    if (init_semaphore(&journal->lock, 1, journal_name) == -1) {
+        destroy_shared_var((void **)&journal->message_incr, journal_incrementer_name);
         return -1;
     }
-    if ( allocate_semaphore( sem_shm_fd, &journal->lock, 1 ) == -1 ) {
-        free_shm( journal_incrementer_name );
-        free_shm( journal_name );
-        return -1;
-    }
+
     return 0;
 }
 
@@ -41,10 +31,8 @@ void destroy_journal( journal_t *journal ) {
     if ( journal == NULL )
         return;
 
-    free_shm( journal_incrementer_name );
-
-    free_semaphore( &journal->lock );
-    free_shm( journal_name );
+    destroy_shared_var((void **)&journal->message_incr, journal_incrementer_name);
+    destroy_semaphore(&journal->lock, journal_name);
 }
 
 void journal_bus( journal_t *journal, char *message ) {

@@ -23,24 +23,25 @@ int init_skibus( skibus_t *bus, arguments_t *args ) {
     bus->capacity = args->bus_capacity;
     bus->max_time_to_next_stop = args->max_time_between_stops;
 
-    int taken_capacity_shm_fd =
-        allocate_shm( SKIBUS_SHM_CAPACITY_TAKEN_NAME, sizeof( int ) );
-    if ( taken_capacity_shm_fd == -1 ) {
+    if ( init_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
+                          SKIBUS_SHM_CAPACITY_TAKEN_NAME ) == -1 ) {
         return -1;
     }
-    bus->capacity_taken = mmap( NULL, sizeof( int ), PROT_READ | PROT_WRITE,
-                                MAP_SHARED, taken_capacity_shm_fd, 0 );
     *( bus->capacity_taken ) = 0;
 
     int r;
     r = init_semaphore( &bus->sem_in_done, 0, SKIBUS_SHM_IN_DONE_NAME );
     if ( r == -1 ) {
+        destroy_shared_var( (void **)&bus->capacity_taken,
+                            SKIBUS_SHM_CAPACITY_TAKEN_NAME );
         return -1;
     }
 
     r = init_semaphore( &bus->sem_out, 0, SKIBUS_SHM_OUT_NAME );
     if ( r == -1 ) {
         destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
+        destroy_shared_var( (void **)&bus->capacity_taken,
+                            SKIBUS_SHM_CAPACITY_TAKEN_NAME );
         return -1;
     }
 
@@ -48,6 +49,8 @@ int init_skibus( skibus_t *bus, arguments_t *args ) {
     if ( r == -1 ) {
         destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_OUT_NAME );
         destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
+        destroy_shared_var( (void **)&bus->capacity_taken,
+                            SKIBUS_SHM_CAPACITY_TAKEN_NAME );
         return -1;
     }
 
@@ -58,7 +61,8 @@ void destroy_skibus( skibus_t *bus ) {
     if ( bus == NULL )
         return;
 
-    free_shm( SKIBUS_SHM_CAPACITY_TAKEN_NAME );
+    destroy_shared_var( (void **)&bus->capacity_taken,
+                        SKIBUS_SHM_CAPACITY_TAKEN_NAME );
 
     destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
     destroy_semaphore( &bus->sem_out, SKIBUS_SHM_OUT_NAME );
@@ -78,26 +82,24 @@ int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
     sprintf( shm_counter_name, SHM_BUS_STOP_COUNTER_FORMAT, stop_idx );
 
     // Configure skiers counter
-    int counter_fd = allocate_shm( shm_counter_name, sizeof( int ) );
-    if ( counter_fd == -1 ) {
+    if ( init_shared_var( (void **)&stop->waiting_skiers_amount, sizeof( int ),
+                          shm_counter_name ) == -1 ) {
         return -1;
     }
-    stop->waiting_skiers_amount =
-        mmap( NULL, sizeof( int ), PROT_READ | PROT_WRITE, MAP_SHARED,
-              counter_fd, 0 );
-
     *( stop->waiting_skiers_amount ) = 0;
 
     // Configure waiting queue
     if ( init_semaphore( &stop->wait_lock, 0, shm_wait_name ) == -1 ) {
-        free_shm( shm_counter_name );
+        destroy_shared_var( (void **)&stop->waiting_skiers_amount,
+                            shm_counter_name );
         return -1;
     }
 
     // Configure entering queue
     if ( init_semaphore( &stop->enter_lock, 1, shm_enter_name ) == -1 ) {
         destroy_semaphore( &stop->wait_lock, shm_wait_name );
-        free_shm( shm_counter_name );
+        destroy_shared_var( (void **)&stop->waiting_skiers_amount,
+                            shm_counter_name );
         return -1;
     }
 
@@ -115,9 +117,11 @@ void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
     sprintf( shm_wait_name, SHM_BUS_STOP_WAIT_FORMAT, stop_idx );
     sprintf( shm_counter_name, SHM_BUS_STOP_COUNTER_FORMAT, stop_idx );
 
+    destroy_shared_var( (void **)&stop->waiting_skiers_amount,
+                        shm_counter_name );
+
     destroy_semaphore( &stop->enter_lock, shm_enter_name );
     destroy_semaphore( &stop->wait_lock, shm_wait_name );
-    free_shm( shm_counter_name );
 }
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
@@ -228,6 +232,7 @@ void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
 }
 
 void skibus_process( ski_resort_t *resort, journal_t *journal ) {
+    // TODO: remove
     sleep( 2 );
 
     journal_bus( journal, "started" );
