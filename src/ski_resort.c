@@ -23,6 +23,7 @@ enum { SHM_NAME_MAX_SIZE = 30 };
 
 int rand_number( int max );
 
+// Initialize a program
 static int init_skibus( skibus_t *bus, arguments_t *args );
 static void destroy_skibus( skibus_t *bus );
 static int init_bus_stop( bus_stop_t *stop, int stop_idx );
@@ -30,11 +31,13 @@ static void destroy_bus_stop( bus_stop_t *stop, int stop_idx );
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
 
-static void let_skibus_passengers_out( ski_resort_t *resort );
+// Run the skibus process
+static void let_passengers_out( ski_resort_t *resort );
 static void board_passengers( ski_resort_t *resort, int stop_idx );
 static void drive_skibus( ski_resort_t *resort, journal_t *journal );
 void skibus_process_behavior( ski_resort_t *resort, journal_t *journal );
 
+// Run the skier process
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal );
 
@@ -202,7 +205,7 @@ void destroy_ski_resort( ski_resort_t *resort ) {
     free( resort->stops );
 }
 
-static void let_skibus_passengers_out( ski_resort_t *resort ) {
+static void let_passengers_out( ski_resort_t *resort ) {
     loginfo( "bus has %i passengers", *resort->bus.capacity_taken );
     while ( *resort->bus.capacity_taken > 0 ) {
         // Allow 1 skier out
@@ -268,7 +271,9 @@ static void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
 
     journal_bus( journal, "arrived to final" );
 
-    let_skibus_passengers_out( resort );
+    let_passengers_out( resort );
+
+    journal_bus( journal, "leaving final" );
 }
 
 void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
@@ -277,11 +282,13 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
     bool ride_again = true;
     while ( ride_again ) {
         drive_skibus( resort, journal );
-        journal_bus( journal, "leaving final" );
         loginfo( "skiers at the resort: %i", resort->skiers_at_resort );
 
-        if ( resort->skiers_at_resort >= resort->skiers_amount ) {
+        if ( resort->skiers_at_resort == resort->skiers_amount ) {
             ride_again = false;
+        } else if (resort->skiers_at_resort > resort->skiers_amount ) {
+            fprintf(stderr, "there are more skiers at the resort than initially existed\n");
+            exit(EXIT_FAILURE);
         }
     }
 
