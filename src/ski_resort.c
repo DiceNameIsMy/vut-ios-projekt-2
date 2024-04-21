@@ -219,13 +219,14 @@ void board_passengers( ski_resort_t *resort, int stop_idx ) {
         loginfo( "fit_more:%i, skier_waiting:%i", can_fit_more_skiers,
                  has_skiers_waiting );
 
-        if ( can_fit_more_skiers && has_skiers_waiting ) {
-            sem_post( bus_stop->wait_bus_lock );
-            ( *resort->bus.capacity_taken )++;
-            sem_wait( resort->bus.sem_in_done );
-            loginfo( "passenger got into the bus" );
+        if ( !can_fit_more_skiers || !has_skiers_waiting ) {
+            break;
         }
-        break;
+
+        sem_post( bus_stop->wait_bus_lock );
+        ( *resort->bus.capacity_taken )++;
+        sem_wait( resort->bus.sem_in_done );
+        loginfo( "passenger got into the bus" );
     }
 }
 
@@ -261,10 +262,12 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
     bool ride_again = true;
     while ( ride_again ) {
         drive_skibus( resort, journal );
-        if (resort->skiers_at_resort == resort->skiers_amount) {
+        loginfo( "skiers at the resort: %i", resort->skiers_at_resort );
+
+        if ( resort->skiers_at_resort == resort->skiers_amount ) {
             ride_again = false;
-        } else if (resort->skiers_at_resort > resort->skiers_amount) {
-            perror("more skiers arrived than existed");
+        } else if ( resort->skiers_at_resort > resort->skiers_amount ) {
+            perror( "more skiers arrived than existed" );
             ride_again = false;
         } else {
             journal_bus( journal, "leaving final" );
@@ -277,7 +280,7 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal ) {
-    int stop_id = rand_number( resort->stops_amount );
+    int stop_id = 1;
     int stop_idx = stop_id - 1;
 
     journal_skier( journal, skier_id, "started" );
