@@ -1,28 +1,24 @@
 #include "../include/journal.h"
 
 #include <semaphore.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 
 #include "../include/sharing.h"
 
-static char *journal_name = "journal";
-static char *journal_incrementer_name = "journal_incr";
+#define JOURNAL_NAME "journal"
+#define JOURNAL_INCREMENTER_NAME "journal_incr"
 
 int init_journal( journal_t *journal ) {
     if ( init_shared_var( (void **)&journal->message_incr, sizeof( int ),
-                          journal_incrementer_name ) == -1 ) {
+                          JOURNAL_INCREMENTER_NAME ) == -1 ) {
         return -1;
     }
     ( *journal->message_incr ) = 1;
 
-    if ( init_semaphore( &journal->lock, 1, journal_name ) == -1 ) {
+    if ( init_semaphore( &journal->lock, 1, JOURNAL_NAME ) == -1 ) {
         destroy_shared_var( (void **)&journal->message_incr,
-                            journal_incrementer_name );
+                            JOURNAL_INCREMENTER_NAME );
         return -1;
     }
 
@@ -30,12 +26,13 @@ int init_journal( journal_t *journal ) {
 }
 
 void destroy_journal( journal_t *journal ) {
-    if ( journal == NULL )
+    if ( journal == NULL ) {
         return;
+    }
 
     destroy_shared_var( (void **)&journal->message_incr,
-                        journal_incrementer_name );
-    destroy_semaphore( &journal->lock, journal_name );
+                        JOURNAL_INCREMENTER_NAME );
+    destroy_semaphore( &journal->lock, JOURNAL_NAME );
 }
 
 void journal_bus( journal_t *journal, char *message ) {

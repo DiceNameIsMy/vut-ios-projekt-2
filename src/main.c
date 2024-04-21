@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -20,13 +21,13 @@ int main() {
     journal_t journal;
     if ( init_journal( &journal ) == -1 ) {
         perror( "init_journal" );
-        exit( EXIT_FAILURE );
+        return EXIT_FAILURE;
     }
 
     ski_resort_t resort;
     if ( init_ski_resort( &args, &resort ) == -1 ) {
         perror( "init_ski_resort" );
-        exit( EXIT_FAILURE );
+        return EXIT_FAILURE;
     }
 
     // Create skibus process
@@ -35,8 +36,9 @@ int main() {
         perror( "fork skibus" );
         destroy_journal( &journal );
         destroy_ski_resort( &resort );
-        exit( EXIT_FAILURE );
-    } else if ( skibus_p == 0 ) {
+        return EXIT_FAILURE;
+    }
+    if ( skibus_p == 0 ) {
         skibus_process( &resort, &journal );
     }
 
@@ -47,8 +49,9 @@ int main() {
             perror( "fork skier" );
             destroy_journal( &journal );
             destroy_ski_resort( &resort );
-            exit( EXIT_FAILURE );
-        } else if ( skier_p == 0 ) {
+            return EXIT_FAILURE;
+        }
+        if ( skier_p == 0 ) {
             int skier_id = i + 1;
             loginfo( "L process %i with pid %i has started", skier_id,
                      getpid() );
@@ -57,9 +60,8 @@ int main() {
     }
 
     // Wait for a skibus and skiers to finish
-    pid_t child_pid;
     while ( true ) {
-        child_pid = wait( NULL );
+        pid_t child_pid = wait( NULL );
         if ( child_pid == -1 ) {
             break;
         }
