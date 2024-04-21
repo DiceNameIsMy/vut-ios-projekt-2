@@ -45,6 +45,7 @@ void journal_bus( journal_t *journal, char *message ) {
     printf( "%i: BUS: %s\n", *journal->message_incr, message );
     ( *journal->message_incr )++;
 
+    fflush( stdout );
     sem_post( journal->lock );
 }
 
@@ -54,6 +55,7 @@ void journal_bus_arrived( journal_t *journal, int stop_id ) {
     printf( "%i: BUS: arrived to %i\n", *journal->message_incr, stop_id );
     ( *journal->message_incr )++;
 
+    fflush( stdout );
     sem_post( journal->lock );
 }
 
@@ -63,6 +65,7 @@ void journal_bus_leaving( journal_t *journal, int stop_id ) {
     printf( "%i: BUS: leaving %i\n", *journal->message_incr, stop_id );
     ( *journal->message_incr )++;
 
+    fflush( stdout );
     sem_post( journal->lock );
 }
 
@@ -72,6 +75,7 @@ void journal_skier( journal_t *journal, int skier_id, char *message ) {
     printf( "%i: L %i: %s\n", *journal->message_incr, skier_id, message );
     ( *journal->message_incr )++;
 
+    fflush( stdout );
     sem_post( journal->lock );
 }
 
@@ -79,10 +83,11 @@ void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
                                     int stop_id ) {
     sem_wait( journal->lock );
 
-    printf( "%i: L %i: arrived at %i\n", *journal->message_incr, skier_id,
+    printf( "%i: L %i: arrived to %i\n", *journal->message_incr, skier_id,
             stop_id );
     ( *journal->message_incr )++;
 
+    fflush( stdout );
     sem_post( journal->lock );
 }
 
@@ -92,6 +97,7 @@ void journal_skier_boarding( journal_t *journal, int skier_id ) {
     printf( "%i: L %i: boarding\n", *journal->message_incr, skier_id );
     ( *journal->message_incr )++;
 
+    fflush( stdout );
     sem_post( journal->lock );
 }
 
@@ -101,5 +107,6 @@ void journal_skier_going_to_ski( journal_t *journal, int skier_id ) {
     printf( "%i: L %i: going to ski\n", *journal->message_incr, skier_id );
     ( *journal->message_incr )++;
 
+    fflush( stdout );
     sem_post( journal->lock );
 }
