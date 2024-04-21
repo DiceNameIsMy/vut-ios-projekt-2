@@ -249,11 +249,9 @@ void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
         journal_bus_leaving( journal, stop_id );
     }
 
-    let_skibus_passengers_out( resort );
+    journal_bus( journal, "arrived to final" );
 
-    journal_bus( journal, "arrived final" );
-    int time_to_next_stop = rand_number( bus->max_ride_to_stop_time );
-    usleep( time_to_next_stop );
+    let_skibus_passengers_out( resort );
 }
 
 void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
