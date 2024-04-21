@@ -210,15 +210,17 @@ void board_passengers( ski_resort_t *resort, int stop_idx ) {
         bool can_fit_more_skiers =
             resort->bus.capacity > *resort->bus.capacity_taken;
 
-        loginfo( "fit_more:%i, skier_waiting:%i", can_fit_more_skiers,
-                 has_skiers_waiting );
+        loginfo( "fit_more:%i, skiers_waiting:%i", can_fit_more_skiers,
+                 waiting_skiers );
 
         if ( !can_fit_more_skiers || !has_skiers_waiting ) {
             break;
         }
 
+        // Let 1 skier in
         sem_post( bus_stop->wait_bus_lock );
         ( *resort->bus.capacity_taken )++;
+        ( *bus_stop->waiting_skiers_amount )--;
         sem_wait( resort->bus.sem_in_done );
         loginfo( "passenger got into the bus" );
     }
@@ -271,7 +273,7 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal ) {
-    int stop_id = rand_number(resort->stops_amount);
+    int stop_id = rand_number( resort->stops_amount );
     int stop_idx = stop_id - 1;
 
     journal_skier( journal, skier_id, "started" );
