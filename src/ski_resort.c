@@ -10,63 +10,10 @@
 #include "../include/journal.h"
 #include "../include/sharing.h"
 
-int rand_number( int max ) { return ( rand() % max ) + 1; }
-
-#define SKIBUS_SHM_CAPACITY_TAKEN_NAME "/skibus_cap_taken"
-#define SKIBUS_SHM_IN_DONE_NAME "/skibus_in_done"
-#define SKIBUS_SHM_OUT_NAME "/skibus_out"
-#define SKIBUS_SHM_OUT_DONE_NAME "/skibus_out_done"
-
-int init_skibus( skibus_t *bus, arguments_t *args ) {
-    bus->capacity = args->bus_capacity;
-    bus->max_ride_to_stop_time = args->max_ride_to_stop_time;
-
-    if ( init_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                          SKIBUS_SHM_CAPACITY_TAKEN_NAME ) == -1 ) {
-        return -1;
-    }
-    *( bus->capacity_taken ) = 0;
-
-    int result =
-        init_semaphore( &bus->sem_in_done, 0, SKIBUS_SHM_IN_DONE_NAME );
-    if ( result == -1 ) {
-        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                            SKIBUS_SHM_CAPACITY_TAKEN_NAME );
-        return -1;
-    }
-
-    result = init_semaphore( &bus->sem_out, 0, SKIBUS_SHM_OUT_NAME );
-    if ( result == -1 ) {
-        destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
-        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                            SKIBUS_SHM_CAPACITY_TAKEN_NAME );
-        return -1;
-    }
-
-    result = init_semaphore( &bus->sem_out_done, 0, SKIBUS_SHM_OUT_DONE_NAME );
-    if ( result == -1 ) {
-        destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_OUT_NAME );
-        destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
-        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                            SKIBUS_SHM_CAPACITY_TAKEN_NAME );
-        return -1;
-    }
-
-    return 0;
-}
-
-void destroy_skibus( skibus_t *bus ) {
-    if ( bus == NULL ) {
-        return;
-    }
-
-    destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                        SKIBUS_SHM_CAPACITY_TAKEN_NAME );
-
-    destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
-    destroy_semaphore( &bus->sem_out, SKIBUS_SHM_OUT_NAME );
-    destroy_semaphore( &bus->sem_out_done, SKIBUS_SHM_OUT_DONE_NAME );
-}
+#define SHM_SKIBUS_CAPACITY_TAKEN_NAME "/skibus_cap_taken"
+#define SHM_SKIBUS_IN_DONE_NAME "/skibus_in_done"
+#define SHM_SKIBUS_OUT_NAME "/skibus_out"
+#define SHM_SKIBUS_OUT_DONE_NAME "/skibus_out_done"
 
 #define SHM_BUS_STOP_ENTER_FORMAT "/bus_stop_%i_enter"
 #define SHM_BUS_STOP_WAIT_FORMAT "/bus_stop_%i"
@@ -74,7 +21,77 @@ void destroy_skibus( skibus_t *bus ) {
 
 enum { SHM_NAME_MAX_SIZE = 30 };
 
-int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
+int rand_number( int max );
+
+static int init_skibus( skibus_t *bus, arguments_t *args );
+static void destroy_skibus( skibus_t *bus );
+static int init_bus_stop( bus_stop_t *stop, int stop_idx );
+static void destroy_bus_stop( bus_stop_t *stop, int stop_idx );
+int init_ski_resort( arguments_t *args, ski_resort_t *resort );
+void destroy_ski_resort( ski_resort_t *resort );
+
+static void let_skibus_passengers_out( ski_resort_t *resort );
+static void board_passengers( ski_resort_t *resort, int stop_idx );
+static void drive_skibus( ski_resort_t *resort, journal_t *journal );
+void skibus_process_behavior( ski_resort_t *resort, journal_t *journal );
+
+void skier_process_behavior( ski_resort_t *resort, int skier_id,
+                             journal_t *journal );
+
+int rand_number( int max ) { return ( rand() % max ) + 1; }
+
+static int init_skibus( skibus_t *bus, arguments_t *args ) {
+    bus->capacity = args->bus_capacity;
+    bus->max_ride_to_stop_time = args->max_ride_to_stop_time;
+
+    if ( init_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
+                          SHM_SKIBUS_CAPACITY_TAKEN_NAME ) == -1 ) {
+        return -1;
+    }
+    *( bus->capacity_taken ) = 0;
+
+    int result =
+        init_semaphore( &bus->sem_in_done, 0, SHM_SKIBUS_IN_DONE_NAME );
+    if ( result == -1 ) {
+        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
+                            SHM_SKIBUS_CAPACITY_TAKEN_NAME );
+        return -1;
+    }
+
+    result = init_semaphore( &bus->sem_out, 0, SHM_SKIBUS_OUT_NAME );
+    if ( result == -1 ) {
+        destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_IN_DONE_NAME );
+        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
+                            SHM_SKIBUS_CAPACITY_TAKEN_NAME );
+        return -1;
+    }
+
+    result = init_semaphore( &bus->sem_out_done, 0, SHM_SKIBUS_OUT_DONE_NAME );
+    if ( result == -1 ) {
+        destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_OUT_NAME );
+        destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_IN_DONE_NAME );
+        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
+                            SHM_SKIBUS_CAPACITY_TAKEN_NAME );
+        return -1;
+    }
+
+    return 0;
+}
+
+static void destroy_skibus( skibus_t *bus ) {
+    if ( bus == NULL ) {
+        return;
+    }
+
+    destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
+                        SHM_SKIBUS_CAPACITY_TAKEN_NAME );
+
+    destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_IN_DONE_NAME );
+    destroy_semaphore( &bus->sem_out, SHM_SKIBUS_OUT_NAME );
+    destroy_semaphore( &bus->sem_out_done, SHM_SKIBUS_OUT_DONE_NAME );
+}
+
+static int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
     char shm_enter_name[ SHM_NAME_MAX_SIZE + 1 ];
     char shm_wait_name[ SHM_NAME_MAX_SIZE + 1 ];
     char shm_counter_name[ SHM_NAME_MAX_SIZE + 1 ];
@@ -112,7 +129,7 @@ int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
     return 0;
 }
 
-void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
+static void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
     if ( stop == NULL ) {
         return;
     }
@@ -185,7 +202,7 @@ void destroy_ski_resort( ski_resort_t *resort ) {
     free( resort->stops );
 }
 
-void let_skibus_passengers_out( ski_resort_t *resort ) {
+static void let_skibus_passengers_out( ski_resort_t *resort ) {
     loginfo( "bus has %i passengers", *resort->bus.capacity_taken );
     while ( *resort->bus.capacity_taken > 0 ) {
         // Allow 1 skier out
@@ -197,7 +214,7 @@ void let_skibus_passengers_out( ski_resort_t *resort ) {
     }
 }
 
-void board_passengers( ski_resort_t *resort, int stop_idx ) {
+static void board_passengers( ski_resort_t *resort, int stop_idx ) {
     while ( true ) {
         bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
 
@@ -230,7 +247,7 @@ void board_passengers( ski_resort_t *resort, int stop_idx ) {
     }
 }
 
-void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
+static void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
     skibus_t *bus = &resort->bus;
 
     // Ride through every bus stop
