@@ -30,7 +30,7 @@ int init_skibus( skibus_t *bus, arguments_t *args ) {
     int result =
         init_semaphore( &bus->sem_in_done, 0, SKIBUS_SHM_IN_DONE_NAME );
     if ( result == -1 ) {
-        destroy_shared_var( (void **)&bus->capacity_taken,
+        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
                             SKIBUS_SHM_CAPACITY_TAKEN_NAME );
         return -1;
     }
@@ -38,7 +38,7 @@ int init_skibus( skibus_t *bus, arguments_t *args ) {
     result = init_semaphore( &bus->sem_out, 0, SKIBUS_SHM_OUT_NAME );
     if ( result == -1 ) {
         destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
-        destroy_shared_var( (void **)&bus->capacity_taken,
+        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
                             SKIBUS_SHM_CAPACITY_TAKEN_NAME );
         return -1;
     }
@@ -47,7 +47,7 @@ int init_skibus( skibus_t *bus, arguments_t *args ) {
     if ( result == -1 ) {
         destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_OUT_NAME );
         destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
-        destroy_shared_var( (void **)&bus->capacity_taken,
+        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
                             SKIBUS_SHM_CAPACITY_TAKEN_NAME );
         return -1;
     }
@@ -60,7 +60,7 @@ void destroy_skibus( skibus_t *bus ) {
         return;
     }
 
-    destroy_shared_var( (void **)&bus->capacity_taken,
+    destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
                         SKIBUS_SHM_CAPACITY_TAKEN_NAME );
 
     destroy_semaphore( &bus->sem_in_done, SKIBUS_SHM_IN_DONE_NAME );
@@ -98,14 +98,14 @@ int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
 
     if ( init_semaphore( &stop->enter_stop_lock, 1, shm_enter_name ) == -1 ) {
         destroy_shared_var( (void **)&stop->waiting_skiers_amount,
-                            shm_counter_name );
+                            sizeof( int ), shm_counter_name );
         return -1;
     }
 
     if ( init_semaphore( &stop->wait_bus_lock, 0, shm_wait_name ) == -1 ) {
         destroy_semaphore( &stop->enter_stop_lock, shm_wait_name );
         destroy_shared_var( (void **)&stop->waiting_skiers_amount,
-                            shm_counter_name );
+                            sizeof( int ), shm_counter_name );
         return -1;
     }
 
@@ -131,7 +131,7 @@ void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
         return;
     }
 
-    destroy_shared_var( (void **)&stop->waiting_skiers_amount,
+    destroy_shared_var( (void **)&stop->waiting_skiers_amount, sizeof( int ),
                         shm_counter_name );
 
     destroy_semaphore( &stop->enter_stop_lock, shm_enter_name );

@@ -8,7 +8,7 @@
 #include <unistd.h>
 
 int allocate_shm( char *shm_name, size_t size );
-void free_shm( char *shm_name );
+void free_shm( char *shm_name, void **addr, size_t len );
 
 int allocate_semaphore( int shm_fd, sem_t **sem, int value );
 void free_semaphore( sem_t **sem );
@@ -32,7 +32,10 @@ int allocate_shm( char *shm_name, size_t size ) {
     return shm_fd;
 }
 
-void free_shm( char *shm_name ) { shm_unlink( shm_name ); }
+void free_shm( char *shm_name, void **addr, size_t len ) {
+    munmap( *addr, len );
+    shm_unlink( shm_name );
+}
 
 int allocate_semaphore( int shm_fd, sem_t **sem, int value ) {
     *sem = mmap( NULL, sizeof( sem_t ), PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -57,7 +60,7 @@ int init_semaphore( sem_t **sem, int val, char *shm_name ) {
         return -1;
     }
     if ( allocate_semaphore( shm_fd, sem, val ) == -1 ) {
-        free_shm( shm_name );
+        free_shm( shm_name, (void **)sem, sizeof( sem_t ) );
         return -1;
     }
     return 0;
@@ -65,7 +68,7 @@ int init_semaphore( sem_t **sem, int val, char *shm_name ) {
 
 void destroy_semaphore( sem_t **sem, char *shm_name ) {
     free_semaphore( sem );
-    free_shm( shm_name );
+    free_shm( shm_name, (void **)sem, sizeof( sem_t ) );
     *sem = NULL;
 }
 
@@ -82,7 +85,7 @@ int init_shared_var( void **ppdata, size_t size, char *shm_name ) {
 
     return 0;
 }
-void destroy_shared_var( void **ppdata, char *shm_name ) {
-    free_shm( shm_name );
+void destroy_shared_var( void **ppdata, size_t size, char *shm_name ) {
+    free_shm( shm_name, ppdata, size );
     *ppdata = NULL;
 }

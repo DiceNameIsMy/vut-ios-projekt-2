@@ -21,7 +21,7 @@ int init_journal( journal_t *journal ) {
     ( *journal->message_incr ) = 1;
 
     if ( init_semaphore( &journal->lock, 1, JOURNAL_NAME ) == -1 ) {
-        destroy_shared_var( (void **)&journal->message_incr,
+        destroy_shared_var( (void **)&journal->message_incr, sizeof( int ),
                             JOURNAL_INCREMENTER_NAME );
         return -1;
     }
@@ -34,7 +34,7 @@ void destroy_journal( journal_t *journal ) {
         return;
     }
 
-    destroy_shared_var( (void **)&journal->message_incr,
+    destroy_shared_var( (void **)&journal->message_incr, sizeof( int ),
                         JOURNAL_INCREMENTER_NAME );
     destroy_semaphore( &journal->lock, JOURNAL_NAME );
 }
