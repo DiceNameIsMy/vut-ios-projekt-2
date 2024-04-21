@@ -243,8 +243,8 @@ void skibus_process( ski_resort_t *resort, journal_t *journal ) {
     exit( EXIT_SUCCESS );
 }
 
-void skier_process( ski_resort_t *resort, int skier_id, int stop_id,
-                    journal_t *journal ) {
+void skier_process( ski_resort_t *resort, int skier_id, journal_t *journal ) {
+    int stop_id = rand_number( resort->stops_amount );
     int stop_idx = stop_id - 1;
 
     journal_skier( journal, skier_id, "started" );

@@ -45,8 +45,6 @@ int main() {
 
     // Create skiers processes
     for ( int i = 0; i < args.skiers_amount; i++ ) {
-        int stop_id = rand_number( args.stops_amount );
-
         pid_t skier_p = fork();
         if ( skier_p < 0 ) {
             perror( "fork skier" );
@@ -57,7 +55,7 @@ int main() {
             int skier_id = i + 1;
             loginfo( "L process %i with pid %i has started", skier_id,
                      getpid() );
-            skier_process( &resort, skier_id, stop_id, &journal );
+            skier_process( &resort, skier_id, &journal );
         }
     }
 
@@ -76,12 +74,6 @@ int main() {
 
     return EXIT_SUCCESS;
 }
-
-/*
-
-Program configuration
-
-*/
 
 void load_args( arguments_t *args ) {
     // TODO: validate inputs

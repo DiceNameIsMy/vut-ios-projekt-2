@@ -50,7 +50,6 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
 
 void skibus_process( ski_resort_t *resort, journal_t *journal );
-void skier_process( ski_resort_t *resort, int skier_id, int stop,
-                    journal_t *journal );
+void skier_process( ski_resort_t *resort, int skier_id, journal_t *journal );
 
 #endif
