@@ -216,11 +216,13 @@ void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
         // Get to the bus stop
         int time_to_next_stop = rand_number( bus->max_time_to_next_stop );
         usleep( time_to_next_stop );
-        journal_bus_arrival( journal, stop_id );
+        journal_bus_arrived( journal, stop_id );
 
         loginfo( "boarding passengers at stop %i", stop_id );
         board_passengers( resort, i );
         loginfo( "passengers at stop %i were boarded", stop_id );
+
+        journal_bus_leaving( journal, stop_id );
     }
 
     let_skibus_passengers_out( resort );

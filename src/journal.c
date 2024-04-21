@@ -44,10 +44,19 @@ void journal_bus( journal_t *journal, char *message ) {
     sem_post( journal->lock );
 }
 
-void journal_bus_arrival( journal_t *journal, int stop_id ) {
+void journal_bus_arrived( journal_t *journal, int stop_id ) {
     sem_wait( journal->lock );
 
     printf( "%i: BUS: arrived to %i\n", *journal->message_incr, stop_id );
+    ( *journal->message_incr )++;
+
+    sem_post( journal->lock );
+}
+
+void journal_bus_leaving( journal_t *journal, int stop_id ) {
+    sem_wait( journal->lock );
+
+    printf( "%i: BUS: leaving %i\n", *journal->message_incr, stop_id );
     ( *journal->message_incr )++;
 
     sem_post( journal->lock );
