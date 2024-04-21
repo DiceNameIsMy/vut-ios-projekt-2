@@ -22,11 +22,9 @@ int allocate_shm( char *shm_name, size_t size ) {
     }
 
     if ( shm_fd == -1 ) {
-        perror( "shm_open" );
         return -1;
     }
     if ( ftruncate( shm_fd, (off_t)size ) == -1 ) {
-        perror( "ftruncate" );
         shm_unlink( shm_name );
         return -1;
     }
@@ -40,12 +38,10 @@ int allocate_semaphore( int shm_fd, sem_t **sem, int value ) {
     *sem = mmap( NULL, sizeof( sem_t ), PROT_READ | PROT_WRITE, MAP_SHARED,
                  shm_fd, 0 );
     if ( sem == MAP_FAILED ) {
-        perror( "mmap" );
         return -1;
     }
 
     if ( sem_init( *sem, true, value ) == -1 ) {
-        perror( "sem_init" );
         sem_destroy( *sem );
         return -1;
     }
@@ -58,12 +54,10 @@ void free_semaphore( sem_t **sem ) { sem_destroy( *sem ); }
 int init_semaphore( sem_t **sem, int val, char *shm_name ) {
     int shm_fd = allocate_shm( shm_name, sizeof( sem_t ) );
     if ( shm_fd == -1 ) {
-        perror( "allocate_shm" );
         return -1;
     }
     if ( allocate_semaphore( shm_fd, sem, val ) == -1 ) {
         free_shm( shm_name );
-        perror( "allocate_semaphore" );
         return -1;
     }
     return 0;
@@ -83,7 +77,6 @@ int init_shared_var( void **ppdata, size_t size, char *shm_name ) {
 
     *ppdata = mmap( NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0 );
     if ( *ppdata == MAP_FAILED ) {
-        perror( "mmap shared_var" );
         return -1;
     }
 

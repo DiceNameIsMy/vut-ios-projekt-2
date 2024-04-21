@@ -79,16 +79,13 @@ int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
     char shm_wait_name[ SHM_NAME_MAX_SIZE + 1 ];
     char shm_counter_name[ SHM_NAME_MAX_SIZE + 1 ];
     if ( sprintf( shm_enter_name, SHM_BUS_STOP_ENTER_FORMAT, stop_idx ) < 0 ) {
-        perror( "sprintf" );
         return -1;
     }
     if ( sprintf( shm_wait_name, SHM_BUS_STOP_WAIT_FORMAT, stop_idx ) < 0 ) {
-        perror( "sprintf" );
         return -1;
     }
     if ( sprintf( shm_counter_name, SHM_BUS_STOP_COUNTER_FORMAT, stop_idx ) <
          0 ) {
-        perror( "sprintf" );
         return -1;
     }
 
@@ -124,16 +121,13 @@ void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
     char shm_wait_name[ SHM_NAME_MAX_SIZE + 1 ];
     char shm_counter_name[ SHM_NAME_MAX_SIZE + 1 ];
     if ( sprintf( shm_enter_name, SHM_BUS_STOP_ENTER_FORMAT, stop_idx ) < 0 ) {
-        perror( "sprintf" );
         return;
     }
     if ( sprintf( shm_wait_name, SHM_BUS_STOP_WAIT_FORMAT, stop_idx ) < 0 ) {
-        perror( "sprintf" );
         return;
     }
     if ( sprintf( shm_counter_name, SHM_BUS_STOP_COUNTER_FORMAT, stop_idx ) <
          0 ) {
-        perror( "sprintf" );
         return;
     }
 
@@ -267,7 +261,6 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
         if ( resort->skiers_at_resort == resort->skiers_amount ) {
             ride_again = false;
         } else if ( resort->skiers_at_resort > resort->skiers_amount ) {
-            perror( "more skiers arrived than existed" );
             ride_again = false;
         } else {
             journal_bus( journal, "leaving final" );
