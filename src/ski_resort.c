@@ -148,6 +148,9 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     if ( init_skibus( &resort->bus, args ) == -1 ) {
         return -1;
     }
+
+    resort->skiers_amount = args->skiers_amount;
+    resort->skiers_at_resort = 0;
     resort->max_walk_to_stop_time = args->max_walk_to_stop_time;
     resort->stops_amount = args->stops_amount;
     resort->stops = malloc( sizeof( bus_stop_t ) * resort->stops_amount );
@@ -196,6 +199,7 @@ void let_skibus_passengers_out( ski_resort_t *resort ) {
         // Wait for 1 skier to get out
         sem_wait( resort->bus.sem_out_done );
         ( *resort->bus.capacity_taken )--;
+        resort->skiers_at_resort++;
     }
 }
 
@@ -249,20 +253,22 @@ void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
     journal_bus( journal, "arrived final" );
     int time_to_next_stop = rand_number( bus->max_ride_to_stop_time );
     usleep( time_to_next_stop );
-    journal_bus( journal, "leaving final" );
 }
 
 void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
-    // TODO: remove
-    sleep( 2 );
-
     journal_bus( journal, "started" );
 
-    // TODO: make a round trip if there are still some skiers left
     bool ride_again = true;
     while ( ride_again ) {
         drive_skibus( resort, journal );
-        ride_again = false;
+        if (resort->skiers_at_resort == resort->skiers_amount) {
+            ride_again = false;
+        } else if (resort->skiers_at_resort > resort->skiers_amount) {
+            perror("more skiers arrived than existed");
+            ride_again = false;
+        } else {
+            journal_bus( journal, "leaving final" );
+        }
     }
 
     journal_bus( journal, "finish" );

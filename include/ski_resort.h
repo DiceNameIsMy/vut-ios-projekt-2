@@ -34,6 +34,9 @@ typedef struct bus_stop bus_stop_t;
 struct ski_resort {
     skibus_t bus;
 
+    int skiers_amount;
+    int skiers_at_resort;
+
     int max_walk_to_stop_time;
     int stops_amount;
     bus_stop_t *stops;
@@ -43,13 +46,11 @@ typedef struct ski_resort ski_resort_t;
 // Get a random number betwen 0 and the parameter max(inclusive)
 int rand_number( int max );
 
-int init_skibus( skibus_t *bus, arguments_t *args );
-int init_bus_stop( bus_stop_t *stop, int stop_idx );
-void destroy_bus_stop( bus_stop_t *stop, int stop_idx );
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 void destroy_ski_resort( ski_resort_t *resort );
 
 void skibus_process_behavior( ski_resort_t *resort, journal_t *journal );
-void skier_process_behavior( ski_resort_t *resort, int skier_id, journal_t *journal );
+void skier_process_behavior( ski_resort_t *resort, int skier_id,
+                             journal_t *journal );
 
 #endif
