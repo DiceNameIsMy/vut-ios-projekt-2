@@ -11,6 +11,8 @@
 #include "../include/journal.h"
 #include "../include/ski_resort.h"
 
+enum { ARG_COUNT = 6 };
+
 /// @brief Load command line arguments into *args and validate them. On error,
 /// first encountered error is printed to stderr.
 /// @param args
@@ -22,7 +24,7 @@ int load_args( arguments_t *args, int argc, char *argv[] );
 /// @brief Convert a string to integer or exit the program with -1 exit code.
 /// @param str 
 /// @return 
-int str_to_int_or_exit( char *str );
+int arg_to_int_or_exit( char *str );
 
 int main( int argc, char *argv[] ) {
     arguments_t args;
@@ -38,6 +40,7 @@ int main( int argc, char *argv[] ) {
 
     ski_resort_t resort;
     if ( init_ski_resort( &args, &resort ) == -1 ) {
+        destroy_journal( &journal );
         fprintf( stderr, "init_ski_resort\n" );
         return EXIT_FAILURE;
     }
@@ -45,7 +48,7 @@ int main( int argc, char *argv[] ) {
     // Create skibus process
     pid_t skibus_p = fork();
     if ( skibus_p < 0 ) {
-        fprintf( stderr, "fork skibus\n" );
+        fprintf( stderr, "failed to create a skibus process\n" );
         destroy_journal( &journal );
         destroy_ski_resort( &resort );
         return EXIT_FAILURE;
@@ -76,9 +79,14 @@ int main( int argc, char *argv[] ) {
 
     // Wait for a skibus and skiers to finish
     while ( true ) {
-        pid_t child_pid = wait( NULL );
+        int child_stat_loc;
+        pid_t child_pid = wait( &child_stat_loc );
         if ( child_pid == -1 ) {
             break;
+        }
+        if (WEXITSTATUS(child_stat_loc) == -1) {
+            fprintf(stderr, "process %i exited with status code -1\n", child_pid);
+            return EXIT_FAILURE;
         }
         loginfo( "process %i has finished execution", child_pid );
     }
@@ -91,19 +99,19 @@ int main( int argc, char *argv[] ) {
 
 enum { DECIMAL_BASE = 10 };
 
-int str_to_int_or_exit( char *str ) {
+int arg_to_int_or_exit( char *arg ) {
     char *endptr = NULL;
 
-    long num_long = strtol( str, &endptr, DECIMAL_BASE );
+    long num_long = strtol( arg, &endptr, DECIMAL_BASE );
 
     bool out_of_range =
         ( errno == ERANGE && ( num_long == LONG_MAX || num_long == LONG_MIN ) );
     if ( out_of_range ) {
-        fprintf( stderr, "strtol\n" );
+        fprintf( stderr, "number is too big or too small\n" );
         exit( EXIT_FAILURE );
     }
 
-    if ( endptr == str ) {
+    if ( endptr == arg ) {
         fprintf( stderr, "invalid number parameter\n" );
         exit( EXIT_FAILURE );
     }
@@ -117,40 +125,38 @@ int str_to_int_or_exit( char *str ) {
     return (int)num_long;
 }
 
-enum { ARG_COUNT = 6 };
-
 int load_args( arguments_t *args, int argc, char *argv[] ) {
     if ( argc != ARG_COUNT ) {
         fprintf( stderr, "not enough arguments\n" );
         return -1;
     }
 
-    args->skiers_amount = str_to_int_or_exit( argv[ 1 ] );
+    args->skiers_amount = arg_to_int_or_exit( argv[ 1 ] );
     if ( args->skiers_amount < 0 || args->skiers_amount >= 20000 ) {
         fprintf( stderr, "L must be in range 0 < X < 20000\n" );
         return -1;
     }
 
-    args->stops_amount = str_to_int_or_exit( argv[ 2 ] );
+    args->stops_amount = arg_to_int_or_exit( argv[ 2 ] );
     if ( args->stops_amount <= 0 || args->stops_amount > 10 ) {
         fprintf( stderr, "Z amount must be in range 0 < X <= 10\n" );
         return -1;
     }
 
-    args->bus_capacity = str_to_int_or_exit( argv[ 3 ] );
+    args->bus_capacity = arg_to_int_or_exit( argv[ 3 ] );
     if ( args->bus_capacity < 10 || args->bus_capacity > 100 ) {
         fprintf( stderr, "K must be in range 10 <= X <= 100\n" );
         return -1;
     }
 
-    args->max_walk_to_stop_time = str_to_int_or_exit( argv[ 4 ] );
+    args->max_walk_to_stop_time = arg_to_int_or_exit( argv[ 4 ] );
     if ( args->max_walk_to_stop_time < 0 ||
          args->max_walk_to_stop_time > 10000 ) {
         fprintf( stderr, "TL must be in range 0 <= X <= 10000\n" );
         return -1;
     }
 
-    args->max_ride_to_stop_time = str_to_int_or_exit( argv[ 5 ] );
+    args->max_ride_to_stop_time = arg_to_int_or_exit( argv[ 5 ] );
     if ( args->max_ride_to_stop_time < 0 ||
          args->max_ride_to_stop_time > 1000 ) {
         fprintf( stderr, "TB must be in range 0 <= X <= 1000\n" );
