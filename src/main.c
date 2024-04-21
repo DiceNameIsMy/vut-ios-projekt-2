@@ -39,7 +39,7 @@ int main() {
         return EXIT_FAILURE;
     }
     if ( skibus_p == 0 ) {
-        skibus_process( &resort, &journal );
+        skibus_process_behavior( &resort, &journal );
     }
 
     // Create skiers processes
@@ -55,7 +55,7 @@ int main() {
             int skier_id = i + 1;
             loginfo( "L process %i with pid %i has started", skier_id,
                      getpid() );
-            skier_process( &resort, skier_id, &journal );
+            skier_process_behavior( &resort, skier_id, &journal );
         }
     }
 
@@ -79,6 +79,6 @@ void load_args( arguments_t *args ) {
     args->skiers_amount = 5;
     args->stops_amount = 10;
     args->bus_capacity = 10;
-    args->max_time_to_get_to_stop = 1000 * 1;        // 1 second
-    args->max_time_between_stops = 1000 * 1000 * 1;  // 1 second
+    args->max_walk_to_stop_time = 1000 * 1;        // 1 second
+    args->max_ride_to_stop_time = 1000 * 1000 * 1;  // 1 second
 }

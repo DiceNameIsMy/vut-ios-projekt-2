@@ -19,7 +19,7 @@ int rand_number( int max ) { return ( rand() % max ) + 1; }
 
 int init_skibus( skibus_t *bus, arguments_t *args ) {
     bus->capacity = args->bus_capacity;
-    bus->max_time_to_next_stop = args->max_time_between_stops;
+    bus->max_ride_to_stop_time = args->max_ride_to_stop_time;
 
     if ( init_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
                           SKIBUS_SHM_CAPACITY_TAKEN_NAME ) == -1 ) {
@@ -79,16 +79,16 @@ int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
     char shm_wait_name[ SHM_NAME_MAX_SIZE + 1 ];
     char shm_counter_name[ SHM_NAME_MAX_SIZE + 1 ];
     if ( sprintf( shm_enter_name, SHM_BUS_STOP_ENTER_FORMAT, stop_idx ) < 0 ) {
-        perror("sprintf");
+        perror( "sprintf" );
         return -1;
     }
     if ( sprintf( shm_wait_name, SHM_BUS_STOP_WAIT_FORMAT, stop_idx ) < 0 ) {
-        perror("sprintf");
+        perror( "sprintf" );
         return -1;
     }
     if ( sprintf( shm_counter_name, SHM_BUS_STOP_COUNTER_FORMAT, stop_idx ) <
          0 ) {
-        perror("sprintf");
+        perror( "sprintf" );
         return -1;
     }
 
@@ -99,16 +99,14 @@ int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
     }
     *( stop->waiting_skiers_amount ) = 0;
 
-    // Configure waiting queue
-    if ( init_semaphore( &stop->wait_lock, 0, shm_wait_name ) == -1 ) {
+    if ( init_semaphore( &stop->enter_stop_lock, 1, shm_enter_name ) == -1 ) {
         destroy_shared_var( (void **)&stop->waiting_skiers_amount,
                             shm_counter_name );
         return -1;
     }
 
-    // Configure entering queue
-    if ( init_semaphore( &stop->enter_lock, 1, shm_enter_name ) == -1 ) {
-        destroy_semaphore( &stop->wait_lock, shm_wait_name );
+    if ( init_semaphore( &stop->wait_bus_lock, 0, shm_wait_name ) == -1 ) {
+        destroy_semaphore( &stop->enter_stop_lock, shm_wait_name );
         destroy_shared_var( (void **)&stop->waiting_skiers_amount,
                             shm_counter_name );
         return -1;
@@ -126,31 +124,31 @@ void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
     char shm_wait_name[ SHM_NAME_MAX_SIZE + 1 ];
     char shm_counter_name[ SHM_NAME_MAX_SIZE + 1 ];
     if ( sprintf( shm_enter_name, SHM_BUS_STOP_ENTER_FORMAT, stop_idx ) < 0 ) {
-        perror("sprintf");
+        perror( "sprintf" );
         return;
     }
     if ( sprintf( shm_wait_name, SHM_BUS_STOP_WAIT_FORMAT, stop_idx ) < 0 ) {
-        perror("sprintf");
+        perror( "sprintf" );
         return;
     }
     if ( sprintf( shm_counter_name, SHM_BUS_STOP_COUNTER_FORMAT, stop_idx ) <
          0 ) {
-        perror("sprintf");
+        perror( "sprintf" );
         return;
     }
 
     destroy_shared_var( (void **)&stop->waiting_skiers_amount,
                         shm_counter_name );
 
-    destroy_semaphore( &stop->enter_lock, shm_enter_name );
-    destroy_semaphore( &stop->wait_lock, shm_wait_name );
+    destroy_semaphore( &stop->enter_stop_lock, shm_enter_name );
+    destroy_semaphore( &stop->wait_bus_lock, shm_wait_name );
 }
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     if ( init_skibus( &resort->bus, args ) == -1 ) {
         return -1;
     }
-    resort->max_time_to_get_to_stop = args->max_time_to_get_to_stop;
+    resort->max_walk_to_stop_time = args->max_walk_to_stop_time;
     resort->stops_amount = args->stops_amount;
     resort->stops = malloc( sizeof( bus_stop_t ) * resort->stops_amount );
     if ( resort->stops == NULL ) {
@@ -190,12 +188,6 @@ void destroy_ski_resort( ski_resort_t *resort ) {
     free( resort->stops );
 }
 
-/*
-
-Processes behavior
-
-*/
-
 void let_skibus_passengers_out( ski_resort_t *resort ) {
     loginfo( "bus has %i passengers", *resort->bus.capacity_taken );
     while ( *resort->bus.capacity_taken > 0 ) {
@@ -212,9 +204,9 @@ void board_passengers( ski_resort_t *resort, int stop_idx ) {
         bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
 
         // Get the amount of waiting skiers
-        sem_wait( bus_stop->enter_lock );
+        sem_wait( bus_stop->enter_stop_lock );
         int waiting_skiers = *bus_stop->waiting_skiers_amount;
-        sem_post( bus_stop->enter_lock );
+        sem_post( bus_stop->enter_stop_lock );
 
         bool has_skiers_waiting = waiting_skiers > 0;
         bool can_fit_more_skiers =
@@ -224,7 +216,7 @@ void board_passengers( ski_resort_t *resort, int stop_idx ) {
                  has_skiers_waiting );
 
         if ( can_fit_more_skiers && has_skiers_waiting ) {
-            sem_post( bus_stop->wait_lock );
+            sem_post( bus_stop->wait_bus_lock );
             ( *resort->bus.capacity_taken )++;
             sem_wait( resort->bus.sem_in_done );
             loginfo( "passenger got into the bus" );
@@ -241,7 +233,7 @@ void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
         int stop_id = i + 1;
 
         // Get to the bus stop
-        int time_to_next_stop = rand_number( bus->max_time_to_next_stop );
+        int time_to_next_stop = rand_number( bus->max_ride_to_stop_time );
         usleep( time_to_next_stop );
         journal_bus_arrived( journal, stop_id );
 
@@ -255,12 +247,12 @@ void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
     let_skibus_passengers_out( resort );
 
     journal_bus( journal, "arrived final" );
-    int time_to_next_stop = rand_number( bus->max_time_to_next_stop );
+    int time_to_next_stop = rand_number( bus->max_ride_to_stop_time );
     usleep( time_to_next_stop );
     journal_bus( journal, "leaving final" );
 }
 
-void skibus_process( ski_resort_t *resort, journal_t *journal ) {
+void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
     // TODO: remove
     sleep( 2 );
 
@@ -277,26 +269,27 @@ void skibus_process( ski_resort_t *resort, journal_t *journal ) {
     exit( EXIT_SUCCESS );
 }
 
-void skier_process( ski_resort_t *resort, int skier_id, journal_t *journal ) {
+void skier_process_behavior( ski_resort_t *resort, int skier_id,
+                             journal_t *journal ) {
     int stop_id = rand_number( resort->stops_amount );
     int stop_idx = stop_id - 1;
 
     journal_skier( journal, skier_id, "started" );
 
-    int time_to_stop = rand_number( resort->max_time_to_get_to_stop );
+    int time_to_stop = rand_number( resort->max_walk_to_stop_time );
     usleep( time_to_stop );
 
     // Arrive at the bus stop
     bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
-    sem_wait( bus_stop->enter_lock );
+    sem_wait( bus_stop->enter_stop_lock );
     ( *bus_stop->waiting_skiers_amount )++;
-    sem_post( bus_stop->enter_lock );
+    sem_post( bus_stop->enter_stop_lock );
     journal_skier_arrived_to_stop( journal, skier_id, stop_id );
 
     loginfo( "L: %i entered stop %i", skier_id, stop_id );
 
     // Wait for bus to open door at the bus stop to get in it.
-    sem_wait( bus_stop->wait_lock );
+    sem_wait( bus_stop->wait_bus_lock );
     sem_post( resort->bus.sem_in_done );
     journal_skier_boarding( journal, skier_id );
 
