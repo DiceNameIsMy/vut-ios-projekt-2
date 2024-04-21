@@ -36,7 +36,7 @@ struct ski_resort {
 
     int max_time_to_get_to_stop;
     int stops_amount;
-    bus_stop_t *stops_new;
+    bus_stop_t *stops;
 };
 typedef struct ski_resort ski_resort_t;
 

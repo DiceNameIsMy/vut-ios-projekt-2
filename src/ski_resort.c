@@ -152,8 +152,8 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     }
     resort->max_time_to_get_to_stop = args->max_time_to_get_to_stop;
     resort->stops_amount = args->stops_amount;
-    resort->stops_new = malloc( sizeof( bus_stop_t ) * resort->stops_amount );
-    if ( resort->stops_new == NULL ) {
+    resort->stops = malloc( sizeof( bus_stop_t ) * resort->stops_amount );
+    if ( resort->stops == NULL ) {
         return -1;
     }
 
@@ -163,10 +163,10 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
         bus_stop_t bus_stop;
         if ( init_bus_stop( &bus_stop, stop_idx ) == -1 ) {
             // TODO: reverse memory allocation
-            free( resort->stops_new );
+            free( resort->stops );
             return -1;
         }
-        resort->stops_new[ stop_id ] = bus_stop;
+        resort->stops[ stop_id ] = bus_stop;
         stop_id++;
     }
 
@@ -183,11 +183,11 @@ void destroy_ski_resort( ski_resort_t *resort ) {
     int stop_id = 0;
     while ( stop_id < resort->stops_amount ) {
         int stop_idx = stop_id + 1;
-        destroy_bus_stop( &resort->stops_new[ stop_id ], stop_idx );
+        destroy_bus_stop( &resort->stops[ stop_id ], stop_idx );
         stop_id++;
     }
 
-    free( resort->stops_new );
+    free( resort->stops );
 }
 
 /*
@@ -209,7 +209,7 @@ void let_skibus_passengers_out( ski_resort_t *resort ) {
 
 void board_passengers( ski_resort_t *resort, int stop_idx ) {
     while ( true ) {
-        bus_stop_t *bus_stop = &resort->stops_new[ stop_idx ];
+        bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
 
         // Get the amount of waiting skiers
         sem_wait( bus_stop->enter_lock );
@@ -287,7 +287,7 @@ void skier_process( ski_resort_t *resort, int skier_id, journal_t *journal ) {
     usleep( time_to_stop );
 
     // Arrive at the bus stop
-    bus_stop_t *bus_stop = &resort->stops_new[ stop_idx ];
+    bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
     sem_wait( bus_stop->enter_lock );
     ( *bus_stop->waiting_skiers_amount )++;
     sem_post( bus_stop->enter_lock );
