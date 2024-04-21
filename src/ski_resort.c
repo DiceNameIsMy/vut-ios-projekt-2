@@ -271,7 +271,7 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal ) {
-    int stop_id = 1;
+    int stop_id = rand_number(resort->stops_amount);
     int stop_idx = stop_id - 1;
 
     journal_skier( journal, skier_id, "started" );
