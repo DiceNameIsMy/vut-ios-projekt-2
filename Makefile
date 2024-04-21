@@ -11,7 +11,7 @@ run: build
 	./bin/main
 
 dbg:
-	$(CC) $(CFLAGS) -g -O0 -DDEBUG src/main.c -o bin/main
+	$(CC) $(CFLAGS) -g -O0 -DDEBUG src/main.c -o bin/main-dbg
 
 dbg-run: dbg
 	./bin/main-dbg
