@@ -22,9 +22,9 @@ enum { ARG_COUNT = 6 };
 int load_args( arguments_t *args, int argc, char *argv[] );
 
 /// @brief Convert a string to integer or exit the program with -1 exit code.
-/// @param str 
+/// @param arg
 /// @return 
-int arg_to_int_or_exit( char *str );
+int arg_to_int_or_exit( char *arg );
 
 int main( int argc, char *argv[] ) {
     arguments_t args;
@@ -34,14 +34,14 @@ int main( int argc, char *argv[] ) {
 
     journal_t journal;
     if ( init_journal( &journal ) == -1 ) {
-        fprintf( stderr, "init_journal\n" );
+        fprintf( stderr, "journal initialization failed\n" );
         return EXIT_FAILURE;
     }
 
     ski_resort_t resort;
     if ( init_ski_resort( &args, &resort ) == -1 ) {
         destroy_journal( &journal );
-        fprintf( stderr, "init_ski_resort\n" );
+        fprintf( stderr, "ski resort initialization failed\n" );
         return EXIT_FAILURE;
     }
 
@@ -79,7 +79,7 @@ int main( int argc, char *argv[] ) {
 
     // Wait for a skibus and skiers to finish
     while ( true ) {
-        int child_stat_loc;
+        int child_stat_loc = 0;
         pid_t child_pid = wait( &child_stat_loc );
         if ( child_pid == -1 ) {
             break;
