@@ -6,10 +6,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "dbg.h"
-#include "journal.h"
-#include "sharing.h"
-#include "ski_resort.h"
+#include "../include/dbg.h"
+#include "../include/journal.h"
+#include "../include/sharing.h"
+#include "../include/ski_resort.h"
 
 /*
 Load and validate CLI arguments. Ends program execution on invalid arguments.

@@ -1,4 +1,4 @@
-#include "journal.h"
+#include "../include/journal.h"
 
 #include <semaphore.h>
 #include <stdbool.h>
@@ -8,7 +8,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include "sharing.h"
+#include "../include/sharing.h"
 
 static char *journal_name = "journal";
 static char *journal_incrementer_name = "journal_incr";

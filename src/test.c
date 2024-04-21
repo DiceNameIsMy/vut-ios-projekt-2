@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#include "sharing.h"
+#include "../include/sharing.h"
 
 #define loginfo( s, ... ) \
     fprintf( stderr, "[INF] " __FILE__ ":%u: " s "\n", __LINE__, ##__VA_ARGS__ )

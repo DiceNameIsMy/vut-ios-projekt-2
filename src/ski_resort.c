@@ -1,4 +1,4 @@
-#include "ski_resort.h"
+#include "../include/ski_resort.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -8,9 +8,9 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "dbg.h"
-#include "journal.h"
-#include "sharing.h"
+#include "../include/dbg.h"
+#include "../include/journal.h"
+#include "../include/sharing.h"
 
 int rand_number( int max ) { return ( rand() % max ) + 1; }
 

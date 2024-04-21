@@ -1,5 +1,6 @@
 CC=gcc
-CFLAGS=-std=gnu99 -Wall -Wextra -Werror -pedantic -lpthread src/journal.c src/sharing.c src/ski_resort.c
+CFLAGS=-std=gnu99 -Wall -Wextra -Werror -pedantic -lpthread
+CFLAGS += src/journal.c src/sharing.c src/ski_resort.c
 
 default: build
 

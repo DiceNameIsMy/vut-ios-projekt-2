@@ -3,7 +3,7 @@
 
 #include <semaphore.h>
 
-#include "journal.h"
+#include "../include/journal.h"
 
 struct arguments {
     int skiers_amount;
