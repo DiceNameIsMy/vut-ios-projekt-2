@@ -258,9 +258,7 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
         drive_skibus( resort, journal );
         loginfo( "skiers at the resort: %i", resort->skiers_at_resort );
 
-        if ( resort->skiers_at_resort == resort->skiers_amount ) {
-            ride_again = false;
-        } else if ( resort->skiers_at_resort > resort->skiers_amount ) {
+        if ( resort->skiers_at_resort >= resort->skiers_amount ) {
             ride_again = false;
         } else {
             journal_bus( journal, "leaving final" );

@@ -78,7 +78,7 @@ int main( int argc, char *argv[] ) {
 
 enum { DECIMAL_BASE = 10 };
 
-int to_int_or_exit( char *str ) {
+int str_to_int_or_exit( char *str ) {
     char *endptr = NULL;
 
     long num_long = strtol( str, &endptr, DECIMAL_BASE );
@@ -113,32 +113,32 @@ void load_args( arguments_t *args, int argc, char *argv[] ) {
         exit( EXIT_FAILURE );
     }
 
-    args->skiers_amount = to_int_or_exit( argv[ 1 ] );
+    args->skiers_amount = str_to_int_or_exit( argv[ 1 ] );
     if ( args->skiers_amount < 0 || args->skiers_amount >= 20000 ) {
         fprintf( stderr, "L must be in range 0 < X < 20000" );
         exit( EXIT_FAILURE );
     }
 
-    args->stops_amount = to_int_or_exit( argv[ 2 ] );
+    args->stops_amount = str_to_int_or_exit( argv[ 2 ] );
     if ( args->stops_amount <= 0 || args->stops_amount > 10 ) {
         fprintf( stderr, "Z amount must be in range 0 < X <= 10" );
         exit( EXIT_FAILURE );
     }
 
-    args->bus_capacity = to_int_or_exit( argv[ 3 ] );
+    args->bus_capacity = str_to_int_or_exit( argv[ 3 ] );
     if ( args->bus_capacity < 10 || args->bus_capacity > 100 ) {
         fprintf( stderr, "K must be in range 10 <= X <= 100" );
         exit( EXIT_FAILURE );
     }
 
-    args->max_walk_to_stop_time = to_int_or_exit( argv[ 4 ] );
+    args->max_walk_to_stop_time = str_to_int_or_exit( argv[ 4 ] );
     if ( args->max_walk_to_stop_time < 0 ||
          args->max_walk_to_stop_time > 10000 ) {
         fprintf( stderr, "TL must be in range 0 <= X <= 10000" );
         exit( EXIT_FAILURE );
     }
 
-    args->max_ride_to_stop_time = to_int_or_exit( argv[ 5 ] );
+    args->max_ride_to_stop_time = str_to_int_or_exit( argv[ 5 ] );
     if ( args->max_ride_to_stop_time < 0 ||
          args->max_ride_to_stop_time > 1000 ) {
         fprintf( stderr, "TB must be in range 0 <= X <= 1000" );
