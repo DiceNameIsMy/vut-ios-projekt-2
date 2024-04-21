@@ -18,7 +18,7 @@ int load_args( arguments_t *args, int argc, char *argv[] );
 
 int main( int argc, char *argv[] ) {
     arguments_t args;
-    if (load_args( &args, argc, argv ) == -1) {
+    if ( load_args( &args, argc, argv ) == -1 ) {
         return EXIT_FAILURE;
     }
 
@@ -48,15 +48,18 @@ int main( int argc, char *argv[] ) {
 
     // Create skiers processes
     for ( int i = 0; i < args.skiers_amount; i++ ) {
+        int skier_id = i + 1;
+
         pid_t skier_p = fork();
         if ( skier_p < 0 ) {
-            fprintf( stderr, "fork skier\n" );
-            destroy_journal( &journal );
+            fprintf( stderr, "failed to create a skier process N%i\n",
+                     skier_id );
             destroy_ski_resort( &resort );
+            destroy_journal( &journal );
+            // TODO: notify childs to make a soft exit?
             return EXIT_FAILURE;
         }
         if ( skier_p == 0 ) {
-            int skier_id = i + 1;
             loginfo( "L process %i with pid %i has started", skier_id,
                      getpid() );
             skier_process_behavior( &resort, skier_id, &journal );
