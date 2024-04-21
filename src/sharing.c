@@ -52,7 +52,10 @@ int allocate_semaphore( int shm_fd, sem_t **sem, int value ) {
     return 0;
 }
 
-void free_semaphore( sem_t **sem ) { sem_destroy( *sem ); }
+void free_semaphore( sem_t **sem ) {
+    munmap( *sem, sizeof( sem_t ) );
+    sem_destroy( *sem );
+}
 
 int init_semaphore( sem_t **sem, int val, char *shm_name ) {
     if ( sem == NULL ) {
