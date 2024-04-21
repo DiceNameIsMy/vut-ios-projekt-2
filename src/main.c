@@ -11,10 +11,18 @@
 #include "../include/journal.h"
 #include "../include/ski_resort.h"
 
-/*
-Load and validate CLI arguments. Ends program execution on invalid arguments.
-*/
+/// @brief Load command line arguments into *args and validate them. On error,
+/// first encountered error is printed to stderr.
+/// @param args
+/// @param argc
+/// @param argv
+/// @return -1 when error occures. 0 otherwise.
 int load_args( arguments_t *args, int argc, char *argv[] );
+
+/// @brief Convert a string to integer or exit the program with -1 exit code.
+/// @param str 
+/// @return 
+int str_to_int_or_exit( char *str );
 
 int main( int argc, char *argv[] ) {
     arguments_t args;
@@ -95,7 +103,6 @@ int str_to_int_or_exit( char *str ) {
         exit( EXIT_FAILURE );
     }
 
-    // Check for empty string or no digits found
     if ( endptr == str ) {
         fprintf( stderr, "invalid number parameter\n" );
         exit( EXIT_FAILURE );
@@ -110,10 +117,10 @@ int str_to_int_or_exit( char *str ) {
     return (int)num_long;
 }
 
-enum { ARG_COUNT = 5 };
+enum { ARG_COUNT = 6 };
 
 int load_args( arguments_t *args, int argc, char *argv[] ) {
-    if ( argc != ARG_COUNT + 1 ) {
+    if ( argc != ARG_COUNT ) {
         fprintf( stderr, "not enough arguments\n" );
         return -1;
     }

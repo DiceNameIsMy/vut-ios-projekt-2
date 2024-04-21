@@ -3,17 +3,19 @@
 
 #include <semaphore.h>
 
-/*
-Synchronized journal
-*/
 struct journal {
     sem_t *lock;
     int *message_incr;
 };
 typedef struct journal journal_t;
 
+/// @brief Initialize a singleton journal. Journaling messages are synchronized.
+/// @param journal
+/// @return
 int init_journal( journal_t *journal );
+
 void destroy_journal( journal_t *journal );
+
 void journal_bus( journal_t *journal, char *message );
 void journal_bus_arrived( journal_t *journal, int stop_id );
 void journal_bus_leaving( journal_t *journal, int stop_id );

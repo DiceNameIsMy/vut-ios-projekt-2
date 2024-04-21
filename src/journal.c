@@ -10,6 +10,10 @@
 #define JOURNAL_INCREMENTER_NAME "journal_incr"
 
 int init_journal( journal_t *journal ) {
+    if ( journal == NULL ) {
+        return -1;
+    }
+
     if ( init_shared_var( (void **)&journal->message_incr, sizeof( int ),
                           JOURNAL_INCREMENTER_NAME ) == -1 ) {
         return -1;
