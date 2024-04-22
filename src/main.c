@@ -23,7 +23,7 @@ int load_args( arguments_t *args, int argc, char *argv[] );
 
 /// @brief Convert a string to integer or exit the program with -1 exit code.
 /// @param arg
-/// @return 
+/// @return
 int arg_to_int_or_exit( char *arg );
 
 int main( int argc, char *argv[] ) {
@@ -76,6 +76,8 @@ int main( int argc, char *argv[] ) {
             skier_process_behavior( &resort, skier_id, &journal );
         }
     }
+    
+    int childs_living = resort.skiers_amount + 1;
 
     // Wait for a skibus and skiers to finish
     while ( true ) {
@@ -84,11 +86,15 @@ int main( int argc, char *argv[] ) {
         if ( child_pid == -1 ) {
             break;
         }
-        if (WEXITSTATUS(child_stat_loc) == -1) {
-            fprintf(stderr, "process %i exited with status code -1\n", child_pid);
+
+        childs_living--;
+
+        if ( WEXITSTATUS( child_stat_loc ) == -1 ) {
+            fprintf( stderr, "process %i exited with status code -1\n",
+                     child_pid );
             return EXIT_FAILURE;
         }
-        loginfo( "process %i has finished execution", child_pid );
+        loginfo( "process %i has finished execution, %i left", child_pid, childs_living );
     }
 
     destroy_journal( &journal );
