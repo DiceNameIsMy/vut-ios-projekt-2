@@ -16,7 +16,7 @@ typedef struct arguments arguments_t;
 
 struct skibus {
     int capacity;
-    int *capacity_taken;
+    int capacity_taken;
     int max_ride_to_stop_time;
     sem_t *sem_in_done;
     sem_t *sem_out;
@@ -27,7 +27,7 @@ typedef struct skibus skibus_t;
 struct bus_stop {
     int *waiting_skiers_amount;
     sem_t *enter_stop_lock;
-    sem_t *wait_bus_lock;
+    sem_t *enter_bus_lock;
 };
 typedef struct bus_stop bus_stop_t;
 

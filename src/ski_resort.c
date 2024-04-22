@@ -10,7 +10,6 @@
 #include "../include/journal.h"
 #include "../include/sharing.h"
 
-#define SHM_SKIBUS_CAPACITY_TAKEN_NAME "/skibus_cap_taken"
 #define SHM_SKIBUS_IN_DONE_NAME "/skibus_in_done"
 #define SHM_SKIBUS_OUT_NAME "/skibus_out"
 #define SHM_SKIBUS_OUT_DONE_NAME "/skibus_out_done"
@@ -21,51 +20,33 @@
 
 enum { SHM_NAME_MAX_SIZE = 30 };
 
-int rand_number( int max );
-
-// Initialize a program
+// Helper functions to initialize a program
 static int init_skibus( skibus_t *bus, arguments_t *args );
 static void destroy_skibus( skibus_t *bus );
 static int init_bus_stop( bus_stop_t *stop, int stop_idx );
 static void destroy_bus_stop( bus_stop_t *stop, int stop_idx );
-int init_ski_resort( arguments_t *args, ski_resort_t *resort );
-void destroy_ski_resort( ski_resort_t *resort );
 
-// Run the skibus process
+// Helper functions to run the skibus process
 static void let_passengers_out( ski_resort_t *resort );
 static void board_passengers( ski_resort_t *resort, int stop_idx );
 static void drive_skibus( ski_resort_t *resort, journal_t *journal );
-void skibus_process_behavior( ski_resort_t *resort, journal_t *journal );
-
-// Run the skier process
-void skier_process_behavior( ski_resort_t *resort, int skier_id,
-                             journal_t *journal );
 
 int rand_number( int max ) { return ( rand() % max ) + 1; }
 
 static int init_skibus( skibus_t *bus, arguments_t *args ) {
     bus->capacity = args->bus_capacity;
+    bus->capacity_taken = 0;
     bus->max_ride_to_stop_time = args->max_ride_to_stop_time;
-
-    if ( init_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                          SHM_SKIBUS_CAPACITY_TAKEN_NAME ) == -1 ) {
-        return -1;
-    }
-    *( bus->capacity_taken ) = 0;
 
     int result =
         init_semaphore( &bus->sem_in_done, 0, SHM_SKIBUS_IN_DONE_NAME );
     if ( result == -1 ) {
-        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                            SHM_SKIBUS_CAPACITY_TAKEN_NAME );
         return -1;
     }
 
     result = init_semaphore( &bus->sem_out, 0, SHM_SKIBUS_OUT_NAME );
     if ( result == -1 ) {
         destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_IN_DONE_NAME );
-        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                            SHM_SKIBUS_CAPACITY_TAKEN_NAME );
         return -1;
     }
 
@@ -73,8 +54,6 @@ static int init_skibus( skibus_t *bus, arguments_t *args ) {
     if ( result == -1 ) {
         destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_OUT_NAME );
         destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_IN_DONE_NAME );
-        destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                            SHM_SKIBUS_CAPACITY_TAKEN_NAME );
         return -1;
     }
 
@@ -85,9 +64,6 @@ static void destroy_skibus( skibus_t *bus ) {
     if ( bus == NULL ) {
         return;
     }
-
-    destroy_shared_var( (void **)&bus->capacity_taken, sizeof( int ),
-                        SHM_SKIBUS_CAPACITY_TAKEN_NAME );
 
     destroy_semaphore( &bus->sem_in_done, SHM_SKIBUS_IN_DONE_NAME );
     destroy_semaphore( &bus->sem_out, SHM_SKIBUS_OUT_NAME );
@@ -122,7 +98,7 @@ static int init_bus_stop( bus_stop_t *stop, int stop_idx ) {
         return -1;
     }
 
-    if ( init_semaphore( &stop->wait_bus_lock, 0, shm_wait_name ) == -1 ) {
+    if ( init_semaphore( &stop->enter_bus_lock, 0, shm_wait_name ) == -1 ) {
         destroy_semaphore( &stop->enter_stop_lock, shm_wait_name );
         destroy_shared_var( (void **)&stop->waiting_skiers_amount,
                             sizeof( int ), shm_counter_name );
@@ -155,7 +131,7 @@ static void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
                         shm_counter_name );
 
     destroy_semaphore( &stop->enter_stop_lock, shm_enter_name );
-    destroy_semaphore( &stop->wait_bus_lock, shm_wait_name );
+    destroy_semaphore( &stop->enter_bus_lock, shm_wait_name );
 }
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
@@ -206,47 +182,50 @@ void destroy_ski_resort( ski_resort_t *resort ) {
 }
 
 static void let_passengers_out( ski_resort_t *resort ) {
-    loginfo( "bus has %i passengers", *resort->bus.capacity_taken );
-    while ( *resort->bus.capacity_taken > 0 ) {
+    loginfo( "bus has %i passengers", resort->bus.capacity_taken );
+    while ( resort->bus.capacity_taken > 0 ) {
         // Allow 1 skier out
         sem_post( resort->bus.sem_out );
         // Wait for 1 skier to get out
         sem_wait( resort->bus.sem_out_done );
-        ( *resort->bus.capacity_taken )--;
         resort->skiers_at_resort++;
+        resort->bus.capacity_taken--;
     }
 }
 
 static void board_passengers( ski_resort_t *resort, int stop_idx ) {
-    while ( true ) {
-        bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
+    bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
 
+    while ( true ) {
         // Get the amount of waiting skiers
         sem_wait( bus_stop->enter_stop_lock );
-        int waiting_skiers = *bus_stop->waiting_skiers_amount;
-        sem_post( bus_stop->enter_stop_lock );
+        bool has_skiers_waiting = *bus_stop->waiting_skiers_amount > 0;
 
-        bool has_skiers_waiting = waiting_skiers > 0;
         bool can_fit_more_skiers =
-            resort->bus.capacity > *resort->bus.capacity_taken;
+            resort->bus.capacity > resort->bus.capacity_taken;
 
-        loginfo( "fit_more:%i, skiers_waiting:%i", can_fit_more_skiers,
-                 waiting_skiers );
+        loginfo( "capacity_taken:%i, waiting_skiers:%i, left_to_drive:%i",
+                 resort->bus.capacity_taken, *bus_stop->waiting_skiers_amount,
+                 resort->skiers_amount - resort->skiers_at_resort );
+
+        sem_post( bus_stop->enter_stop_lock );
 
         if ( !can_fit_more_skiers || !has_skiers_waiting ) {
             break;
         }
 
         // Let 1 skier in
-        sem_post( bus_stop->wait_bus_lock );
-        ( *resort->bus.capacity_taken )++;
+        sem_post( bus_stop->enter_bus_lock );
+        sem_wait( resort->bus.sem_in_done );
 
+        loginfo( "BUS: skier got in. Updating info..." );
+
+        // Confirm that skier got into the bus
         sem_wait( bus_stop->enter_stop_lock );
         ( *bus_stop->waiting_skiers_amount )--;
         sem_post( bus_stop->enter_stop_lock );
 
-        sem_wait( resort->bus.sem_in_done );
-        loginfo( "passenger got into the bus" );
+        resort->bus.capacity_taken++;
     }
 }
 
@@ -286,9 +265,10 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 
         if ( resort->skiers_at_resort == resort->skiers_amount ) {
             ride_again = false;
-        } else if (resort->skiers_at_resort > resort->skiers_amount ) {
-            fprintf(stderr, "there are more skiers at the resort than initially existed\n");
-            exit(EXIT_FAILURE);
+        } else if ( resort->skiers_at_resort > resort->skiers_amount ) {
+            (void)fprintf( stderr, "there are more skiers at the resort than "
+                                   "initially existed\n" );
+            exit( EXIT_FAILURE );
         }
     }
 
@@ -298,7 +278,8 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal ) {
-    int stop_id = rand_number( resort->stops_amount );
+    int pid = (int)getpid();
+    int stop_id = 1;
     int stop_idx = stop_id - 1;
 
     journal_skier( journal, skier_id, "started" );
@@ -313,19 +294,22 @@ void skier_process_behavior( ski_resort_t *resort, int skier_id,
     sem_post( bus_stop->enter_stop_lock );
     journal_skier_arrived_to_stop( journal, skier_id, stop_id );
 
-    loginfo( "L: %i entered stop %i", skier_id, stop_id );
+    loginfo( "L: %i(pid:%i) entered stop %i", skier_id, pid, stop_id );
 
     // Wait for bus to open door at the bus stop to get in it.
-    sem_wait( bus_stop->wait_bus_lock );
+    sem_wait( bus_stop->enter_bus_lock );
     sem_post( resort->bus.sem_in_done );
     journal_skier_boarding( journal, skier_id );
+
+    loginfo( "L: %i(pid:%i) entered bus", skier_id, pid );
 
     // Wait for bus to arrive at the resort & let him out
     sem_wait( resort->bus.sem_out );
     sem_post( resort->bus.sem_out_done );
     journal_skier_going_to_ski( journal, skier_id );
 
-    loginfo( "skier %i, process is finishing execution", skier_id );
+    loginfo( "L: %i(pid:%i) is finishing execution %i", skier_id, pid,
+             stop_id );
 
     exit( EXIT_SUCCESS );
 }
