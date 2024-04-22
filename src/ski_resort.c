@@ -10,6 +10,8 @@
 #include "../include/journal.h"
 #include "../include/sharing.h"
 
+#define SHM_SKI_RESORT_START_LOCK_NAME "/ski_resort_start_lock"
+
 #define SHM_SKIBUS_IN_DONE_NAME "/skibus_in_done"
 #define SHM_SKIBUS_OUT_NAME "/skibus_out"
 #define SHM_SKIBUS_OUT_DONE_NAME "/skibus_out_done"
@@ -144,7 +146,15 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
         return -1;
     }
 
+    if ( init_semaphore( &resort->start_lock, 0,
+                         SHM_SKI_RESORT_START_LOCK_NAME ) == -1 ) {
+        free( resort->stops );
+        return -1;
+    }
+
     if ( init_skibus( &resort->bus, args ) == -1 ) {
+        destroy_semaphore( &resort->start_lock,
+                           SHM_SKI_RESORT_START_LOCK_NAME );
         free( resort->stops );
         return -1;
     }
@@ -154,7 +164,9 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
         bus_stop_t bus_stop;
         if ( init_bus_stop( &bus_stop, stop_idx ) == -1 ) {
             // TODO: reverse memory allocation
-            destroy_skibus(&resort->bus);
+            destroy_skibus( &resort->bus );
+            destroy_semaphore( &resort->start_lock,
+                               SHM_SKI_RESORT_START_LOCK_NAME );
             free( resort->stops );
             return -1;
         }
@@ -165,11 +177,22 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     return 0;
 }
 
+int start_ski_resort( ski_resort_t *resort ) {
+    if ( resort == NULL ) {
+        return -1;
+    }
+    if ( sem_post( resort->start_lock ) == -1 ) {
+        return -1;
+    }
+    return 0;
+}
+
 void destroy_ski_resort( ski_resort_t *resort ) {
     if ( resort == NULL ) {
         return;
     }
 
+    destroy_semaphore( &resort->start_lock, SHM_SKI_RESORT_START_LOCK_NAME );
     destroy_skibus( &resort->bus );
 
     int stop_id = 0;
@@ -257,6 +280,10 @@ static void drive_skibus( ski_resort_t *resort, journal_t *journal ) {
 }
 
 void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
+    // Wait for start signal
+    sem_wait( resort->start_lock );
+    sem_post( resort->start_lock );
+
     journal_bus( journal, "started" );
 
     bool ride_again = true;
@@ -279,6 +306,10 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal ) {
+    // Wait for start signal
+    sem_wait( resort->start_lock );
+    sem_post( resort->start_lock );
+
     int stop_id = 1;
     int stop_idx = stop_id - 1;
 

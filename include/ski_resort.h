@@ -33,6 +33,9 @@ typedef struct bus_stop bus_stop_t;
 
 /// @brief Core struct representing the program's universe.
 struct ski_resort {
+    // Programs starts running once this semaphore is unlocked
+    sem_t *start_lock;
+
     skibus_t bus;
 
     int skiers_amount;
@@ -50,6 +53,7 @@ typedef struct ski_resort ski_resort_t;
 int rand_number( int max );
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
+int start_ski_resort(ski_resort_t *resort);
 void destroy_ski_resort( ski_resort_t *resort );
 
 /// @brief Representation of what a skibus does during its lifetime
