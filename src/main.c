@@ -3,9 +3,22 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../include/simulation.h"
 #include "../include/ski_resort.h"
+
+static const char HELP_TEXT[] =
+    "Usage: ./proj2 L Z K TL TB\n"
+    "\n"
+    "Arguments:\n"
+    "- L: number of skiers, L<20000\n"
+    "- Z: number of boarding stops, 0<Z<=10\n"
+    "- K: capacity of the ski bus, 10<=K<=100\n"
+    "- TL: Maximum time in microseconds a skier waits \n"
+    "      before arriving at a stop, 0<=TL<=10000\n"
+    "- TB: Maximum time it takes for the bus to travel \n"
+    "      between two stops, 0<=TB<=1000\n";
 
 enum { ARG_COUNT = 6 };
 
@@ -35,6 +48,14 @@ void within_min_max( int val, int min, int max, char *val_name );
 int arg_to_int_or_exit( char *arg );
 
 int main( int argc, char *argv[] ) {
+    for ( int i = 1; i < argc; i++ ) {
+        if ( strcmp( argv[ i ], "--help" ) == 0 ||
+             strcmp( argv[ i ], "-h" ) == 0 ) {
+            (void)printf( HELP_TEXT );
+            return EXIT_SUCCESS;
+        }
+    }
+
     arguments_t args;
     if ( argc != ARG_COUNT ) {
         (void)fprintf( stderr, "not enough arguments\n" );
