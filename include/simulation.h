@@ -12,6 +12,9 @@ struct simulation {
 };
 typedef struct simulation simulation_t;
 
+/// @brief Run a simulation of a ski resort as specified in the project
+/// requirements. If it fails, an error message is printed to stderr and -1 is
+/// returned.
 int run_simulation( arguments_t *args );
 
 #endif
