@@ -18,3 +18,6 @@ dbg:
 
 dbg-run: dbg
 	./bin/main-dbg
+
+zip:
+	zip -r proj2.zip Makefile src include
