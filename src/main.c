@@ -1,14 +1,10 @@
 #include <errno.h>
 #include <limits.h>
-#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/wait.h>
-#include <unistd.h>
 
-#include "../include/dbg.h"
-#include "../include/journal.h"
+#include "../include/simulation.h"
 #include "../include/ski_resort.h"
 
 enum { ARG_COUNT = 6 };
@@ -32,95 +28,9 @@ int main( int argc, char *argv[] ) {
         return EXIT_FAILURE;
     }
 
-    journal_t journal;
-    if ( init_journal( &journal ) == -1 ) {
-        (void)fprintf( stderr, "journal initialization failed\n" );
+    if ( run_simulation( &args ) == -1 ) {
         return EXIT_FAILURE;
     }
-
-    ski_resort_t resort;
-    if ( init_ski_resort( &args, &resort ) == -1 ) {
-        destroy_journal( &journal );
-        (void)fprintf( stderr, "ski resort initialization failed\n" );
-        return EXIT_FAILURE;
-    }
-
-    // Create skibus process
-    pid_t skibus_p = fork();
-    if ( skibus_p < 0 ) {
-        (void)fprintf( stderr, "failed to create a skibus process\n" );
-        destroy_journal( &journal );
-        destroy_ski_resort( &resort );
-        return EXIT_FAILURE;
-    }
-    if ( skibus_p == 0 ) {
-        skibus_process_behavior( &resort, &journal );
-    }
-
-    // Used to kill all children on initialization error
-    pid_t *skiers_pids = malloc( sizeof( pid_t ) * args.skiers_amount );
-    if ( skiers_pids == NULL ) {
-        destroy_ski_resort( &resort );
-        destroy_journal( &journal );
-        (void)fprintf( stderr, "skiers pids array initialization failed\n" );
-        return EXIT_FAILURE;
-    }
-
-    // Create skiers processes
-    for ( int i = 0; i < args.skiers_amount; i++ ) {
-        int skier_id = i + 1;
-
-        pid_t skier_pid = fork();
-        if ( skier_pid < 0 ) {
-            (void)fprintf( stderr, "failed to create a skier process N%i\n",
-                           skier_id );
-
-            perror("fork");
-
-            kill( skibus_p, SIGKILL );
-            for ( int j = 0; j < i; j++ ) {
-                kill( skiers_pids[ j ], SIGKILL );
-            }
-
-            free( skiers_pids );
-            destroy_ski_resort( &resort );
-            destroy_journal( &journal );
-            return EXIT_FAILURE;
-        }
-        if ( skier_pid == 0 ) {
-            loginfo( "L process %i with pid %i has started", skier_id,
-                     getpid() );
-            skier_process_behavior( &resort, skier_id, &journal );
-        }
-        skiers_pids[ i ] = skier_pid;
-    }
-
-    int childs_living = resort.skiers_amount + 1;
-
-    start_ski_resort(&resort);
-
-    // Wait for a skibus and skiers to finish
-    while ( true ) {
-        int child_stat_loc = 0;
-        pid_t child_pid = wait( &child_stat_loc );
-        if ( child_pid == -1 ) {
-            break;
-        }
-
-        childs_living--;
-
-        if ( WEXITSTATUS( child_stat_loc ) == -1 ) {
-            (void)fprintf( stderr, "process %i exited with status code -1\n",
-                           child_pid );
-            return EXIT_FAILURE;
-        }
-        loginfo( "process %i has finished execution, %i left", child_pid,
-                 childs_living );
-    }
-
-    free( skiers_pids );
-    destroy_journal( &journal );
-    destroy_ski_resort( &resort );
 
     return EXIT_SUCCESS;
 }
