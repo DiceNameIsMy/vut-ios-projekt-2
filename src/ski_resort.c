@@ -135,10 +135,6 @@ static void destroy_bus_stop( bus_stop_t *stop, int stop_idx ) {
 }
 
 int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
-    if ( init_skibus( &resort->bus, args ) == -1 ) {
-        return -1;
-    }
-
     resort->skiers_amount = args->skiers_amount;
     resort->skiers_at_resort = 0;
     resort->max_walk_to_stop_time = args->max_walk_to_stop_time;
@@ -148,12 +144,17 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
         return -1;
     }
 
+    if ( init_skibus( &resort->bus, args ) == -1 ) {
+        free( resort->stops );
+        return -1;
+    }
     int stop_id = 0;
     while ( stop_id < resort->stops_amount ) {
         int stop_idx = stop_id + 1;
         bus_stop_t bus_stop;
         if ( init_bus_stop( &bus_stop, stop_idx ) == -1 ) {
             // TODO: reverse memory allocation
+            destroy_skibus(&resort->bus);
             free( resort->stops );
             return -1;
         }
