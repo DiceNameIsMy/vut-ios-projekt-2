@@ -278,7 +278,6 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
                              journal_t *journal ) {
-    int pid = (int)getpid();
     int stop_id = 1;
     int stop_idx = stop_id - 1;
 
@@ -291,25 +290,22 @@ void skier_process_behavior( ski_resort_t *resort, int skier_id,
     bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
     sem_wait( bus_stop->enter_stop_lock );
     ( *bus_stop->waiting_skiers_amount )++;
+    loginfo( "L: %i entered stop %i", skier_id, stop_id );
     sem_post( bus_stop->enter_stop_lock );
     journal_skier_arrived_to_stop( journal, skier_id, stop_id );
 
-    loginfo( "L: %i(pid:%i) entered stop %i", skier_id, pid, stop_id );
-
     // Wait for bus to open door at the bus stop to get in it.
     sem_wait( bus_stop->enter_bus_lock );
+    loginfo( "L: %i entered bus", skier_id );
     sem_post( resort->bus.sem_in_done );
     journal_skier_boarding( journal, skier_id );
-
-    loginfo( "L: %i(pid:%i) entered bus", skier_id, pid );
 
     // Wait for bus to arrive at the resort & let him out
     sem_wait( resort->bus.sem_out );
     sem_post( resort->bus.sem_out_done );
     journal_skier_going_to_ski( journal, skier_id );
 
-    loginfo( "L: %i(pid:%i) is finishing execution %i", skier_id, pid,
-             stop_id );
+    loginfo( "L: %i is finishing execution %i", skier_id, stop_id );
 
     exit( EXIT_SUCCESS );
 }
