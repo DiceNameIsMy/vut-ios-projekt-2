@@ -1,18 +1,21 @@
 #ifndef JOURNAL_H
 #define JOURNAL_H
 
+#include <stdio.h>
 #include <semaphore.h>
 
 struct journal {
     sem_t *lock;
     int *message_incr;
+    FILE *write_to;
 };
 typedef struct journal journal_t;
 
 /// @brief Initialize a singleton journal. Journaling messages are synchronized.
 /// @param journal
+/// @param write_to Location to where write the journal entries
 /// @return
-int init_journal( journal_t *journal );
+int init_journal( journal_t *journal, FILE* write_to );
 
 void destroy_journal( journal_t *journal );
 

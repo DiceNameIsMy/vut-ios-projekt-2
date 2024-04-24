@@ -114,7 +114,7 @@ int spawn_processes( simulation_t *simulation ) {
 }
 
 int allocate_resources( arguments_t *args, simulation_t *simulation ) {
-    if ( init_journal( &simulation->journal ) == -1 ) {
+    if ( init_journal( &simulation->journal, args->output ) == -1 ) {
         return -1;
     }
 

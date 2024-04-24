@@ -11,6 +11,7 @@ struct arguments {
     int bus_capacity;
     int max_walk_to_stop_time;
     int max_ride_to_stop_time;
+    FILE *output;
 };
 typedef struct arguments arguments_t;
 

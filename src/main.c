@@ -8,6 +8,8 @@
 #include "../include/simulation.h"
 #include "../include/ski_resort.h"
 
+#define OUTPUT_FILENAME "proj2.out"
+
 static const char HELP_TEXT[] =
     "Usage: ./proj2 L Z K TL TB\n"
     "\n"
@@ -77,10 +79,17 @@ int main( int argc, char *argv[] ) {
     within_min_max( args.max_ride_to_stop_time, 0, MAX_RIDE_TO_STOP_TIME,
                     "TB" );
 
-    if ( run_simulation( &args ) == -1 ) {
+    args.output = fopen( OUTPUT_FILENAME, "we" );
+    if ( args.output == NULL ) {
+        (void)fprintf( stderr, "Failed to open an output file" );
         return EXIT_FAILURE;
     }
 
+    if ( run_simulation( &args ) == -1 ) {
+        fclose( args.output );
+        return EXIT_FAILURE;
+    }
+    fclose( args.output );
     return EXIT_SUCCESS;
 }
 

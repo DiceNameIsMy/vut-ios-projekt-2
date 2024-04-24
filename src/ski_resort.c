@@ -2,6 +2,7 @@
 
 #include <semaphore.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -142,6 +143,8 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     resort->skiers_at_resort = 0;
     resort->max_walk_to_stop_time = args->max_walk_to_stop_time;
     resort->stops_amount = args->stops_amount;
+
+#include <stddef.h>
 
     size_t stops_size = sizeof( bus_stop_t ) * resort->stops_amount;
     if ( init_shared_var( (void **)&resort->stops, stops_size,
