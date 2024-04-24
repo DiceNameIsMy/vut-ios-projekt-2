@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Werror -pedantic -lpthread -lrt
-CFLAGS += src/journal.c src/sharing.c src/ski_resort.c src/simulation.c
+CFLAGS += src/random.c src/journal.c src/sharing.c src/ski_resort.c src/simulation.c
 
 default: release
 

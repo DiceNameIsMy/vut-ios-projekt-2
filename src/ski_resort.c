@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "../include/dbg.h"
+#include "../include/random.h"
 #include "../include/journal.h"
 #include "../include/sharing.h"
 
@@ -35,18 +36,6 @@ static void destroy_bus_stop( bus_stop_t *stop, int stop_idx );
 static void let_passengers_out( ski_resort_t *resort );
 static void board_passengers( ski_resort_t *resort, int stop_idx );
 static void drive_skibus( ski_resort_t *resort, journal_t *journal );
-
-void set_rand_seed() {
-    static bool initialized = 0;
-    if ( !initialized ) {
-        srand( time( NULL ) + getpid() );
-        initialized = 1;
-    }
-}
-int rand_number( int max ) {
-    set_rand_seed();
-    return ( rand() % max ) + 1;
-}
 
 static int init_skibus( skibus_t *bus, arguments_t *args ) {
     bus->capacity = args->bus_capacity;
@@ -329,26 +318,25 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal ) {
 }
 
 void skier_process_behavior( ski_resort_t *resort, int skier_id,
-                             journal_t *journal ) {
+                             int bus_stop_id, journal_t *journal ) {
+    int bus_stop_idx = bus_stop_id - 1;
+    bus_stop_t *bus_stop = &resort->stops[ bus_stop_idx ];
+    int time_to_stop = rand_number( resort->max_walk_to_stop_time );
+
     // Wait for start signal
     sem_wait( resort->start_lock );
     sem_post( resort->start_lock );
-
-    int stop_id = rand_number( resort->stops_amount - 1 );
-    int stop_idx = stop_id - 1;
-
     journal_skier( journal, skier_id, "started" );
 
-    int time_to_stop = rand_number( resort->max_walk_to_stop_time );
+    // Walk to the bus stop
     usleep( time_to_stop );
 
     // Arrive at the bus stop
-    bus_stop_t *bus_stop = &resort->stops[ stop_idx ];
     sem_wait( bus_stop->enter_stop_lock );
     ( *bus_stop->waiting_skiers_amount )++;
-    loginfo( "L: %i entered stop %i", skier_id, stop_id );
+    loginfo( "L: %i entered stop %i", skier_id, bus_stop_id );
     sem_post( bus_stop->enter_stop_lock );
-    journal_skier_arrived_to_stop( journal, skier_id, stop_id );
+    journal_skier_arrived_to_stop( journal, skier_id, bus_stop_id );
 
     // Wait for bus to open door at the bus stop to get in it.
     sem_wait( bus_stop->enter_bus_lock );
@@ -361,7 +349,7 @@ void skier_process_behavior( ski_resort_t *resort, int skier_id,
     sem_post( resort->bus.sem_out_done );
     journal_skier_going_to_ski( journal, skier_id );
 
-    loginfo( "L: %i is finishing execution %i", skier_id, stop_id );
+    loginfo( "L: %i is finishing execution %i", skier_id, bus_stop_id );
 
     exit( EXIT_SUCCESS );
 }

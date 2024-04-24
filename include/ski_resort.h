@@ -48,6 +48,11 @@ struct ski_resort {
 };
 typedef struct ski_resort ski_resort_t;
 
+/// @brief 
+/// @param max 
+/// @return 
+int rand_number( int max );
+
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 int start_ski_resort(ski_resort_t *resort);
 void destroy_ski_resort( ski_resort_t *resort );
@@ -61,7 +66,7 @@ void skibus_process_behavior( ski_resort_t *resort, journal_t *journal );
 /// @param resort A valid pointer to an initialized structure is expected
 /// @param skier_id
 /// @param journal A valid pointer to an initialized structure is expected
-void skier_process_behavior( ski_resort_t *resort, int skier_id,
+void skier_process_behavior( ski_resort_t *resort, int skier_id, int bus_stop_id,
                              journal_t *journal );
 
 #endif

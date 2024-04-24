@@ -80,7 +80,8 @@ int spawn_skier( int skier_idx, simulation_t *simulation ) {
         return -1;
     }
     if ( skier_pid == 0 ) {
-        skier_process_behavior( &simulation->ski_resort, skier_id,
+        int bus_stop_id = rand_number(simulation->ski_resort.stops_amount);
+        skier_process_behavior( &simulation->ski_resort, skier_id, bus_stop_id,
                                 &simulation->journal );
     }
     simulation->skier_pids[ skier_idx ] = skier_pid;
