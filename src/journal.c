@@ -47,7 +47,7 @@ void destroy_journal( journal_t *journal ) {
 void journal_bus( journal_t *journal, char *message ) {
     sem_wait( journal->lock );
 
-    fprintf( journal->write_to, "%i: BUS: %s\n", *journal->message_incr,
+    (void)fprintf( journal->write_to, "%i: BUS: %s\n", *journal->message_incr,
              message );
     ( *journal->message_incr )++;
 
@@ -58,7 +58,7 @@ void journal_bus( journal_t *journal, char *message ) {
 void journal_bus_arrived( journal_t *journal, int stop_id ) {
     sem_wait( journal->lock );
 
-    fprintf( journal->write_to, "%i: BUS: arrived to %i\n",
+    (void)fprintf( journal->write_to, "%i: BUS: arrived to %i\n",
              *journal->message_incr, stop_id );
     ( *journal->message_incr )++;
 
@@ -69,7 +69,7 @@ void journal_bus_arrived( journal_t *journal, int stop_id ) {
 void journal_bus_leaving( journal_t *journal, int stop_id ) {
     sem_wait( journal->lock );
 
-    fprintf( journal->write_to, "%i: BUS: leaving %i\n", *journal->message_incr,
+    (void)fprintf( journal->write_to, "%i: BUS: leaving %i\n", *journal->message_incr,
              stop_id );
     ( *journal->message_incr )++;
 
@@ -80,7 +80,7 @@ void journal_bus_leaving( journal_t *journal, int stop_id ) {
 void journal_skier( journal_t *journal, int skier_id, char *message ) {
     sem_wait( journal->lock );
 
-    fprintf( journal->write_to, "%i: L %i: %s\n", *journal->message_incr,
+    (void)fprintf( journal->write_to, "%i: L %i: %s\n", *journal->message_incr,
              skier_id, message );
     ( *journal->message_incr )++;
 
@@ -92,7 +92,7 @@ void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
                                     int stop_id ) {
     sem_wait( journal->lock );
 
-    fprintf( journal->write_to, "%i: L %i: arrived to %i\n",
+    (void)fprintf( journal->write_to, "%i: L %i: arrived to %i\n",
              *journal->message_incr, skier_id, stop_id );
     ( *journal->message_incr )++;
 
@@ -103,7 +103,7 @@ void journal_skier_arrived_to_stop( journal_t *journal, int skier_id,
 void journal_skier_boarding( journal_t *journal, int skier_id ) {
     sem_wait( journal->lock );
 
-    fprintf( journal->write_to, "%i: L %i: boarding\n", *journal->message_incr,
+    (void)fprintf( journal->write_to, "%i: L %i: boarding\n", *journal->message_incr,
              skier_id );
     ( *journal->message_incr )++;
 
@@ -114,7 +114,7 @@ void journal_skier_boarding( journal_t *journal, int skier_id ) {
 void journal_skier_going_to_ski( journal_t *journal, int skier_id ) {
     sem_wait( journal->lock );
 
-    fprintf( journal->write_to, "%i: L %i: going to ski\n",
+    (void)fprintf( journal->write_to, "%i: L %i: going to ski\n",
              *journal->message_incr, skier_id );
     ( *journal->message_incr )++;
 

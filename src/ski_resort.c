@@ -9,8 +9,8 @@
 #include <unistd.h>
 
 #include "../include/dbg.h"
-#include "../include/random.h"
 #include "../include/journal.h"
+#include "../include/random.h"
 #include "../include/sharing.h"
 
 #define SHM_SKI_RESORT_START_LOCK_NAME "/ski_resort_start_lock"
