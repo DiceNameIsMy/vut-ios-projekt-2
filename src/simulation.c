@@ -61,6 +61,8 @@ int run_simulation( arguments_t *args ) {
                 pid_t skier_pid = simulation.skier_pids[ j ];
                 kill( skier_pid, SIGKILL );
             }
+
+            free_resources( &simulation );
             return -1;
         }
     }
