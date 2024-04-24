@@ -48,11 +48,6 @@ struct ski_resort {
 };
 typedef struct ski_resort ski_resort_t;
 
-/// @brief Get a random number between 0 and the parameter max(inclusive)
-/// @param max
-/// @return
-int rand_number( int max );
-
 int init_ski_resort( arguments_t *args, ski_resort_t *resort );
 int start_ski_resort(ski_resort_t *resort);
 void destroy_ski_resort( ski_resort_t *resort );
