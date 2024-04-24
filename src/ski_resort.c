@@ -163,7 +163,11 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
         int stop_idx = stop_id + 1;
         bus_stop_t bus_stop;
         if ( init_bus_stop( &bus_stop, stop_idx ) == -1 ) {
-            // TODO: reverse memory allocation
+            // Destroy already allocated bus stops
+            for ( int i = 0; i < stop_id; i++ ) {
+                destroy_bus_stop( &resort->stops[ i ], i );
+            }
+
             destroy_skibus( &resort->bus );
             destroy_semaphore( &resort->start_lock,
                                SHM_SKI_RESORT_START_LOCK_NAME );
@@ -310,7 +314,7 @@ void skier_process_behavior( ski_resort_t *resort, int skier_id,
     sem_wait( resort->start_lock );
     sem_post( resort->start_lock );
 
-    int stop_id = 1;
+    int stop_id = rand_number( resort->stops_amount - 1 );
     int stop_idx = stop_id - 1;
 
     journal_skier( journal, skier_id, "started" );
