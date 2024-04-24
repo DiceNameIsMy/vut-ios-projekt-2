@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../include/dbg.h"
@@ -35,7 +36,17 @@ static void let_passengers_out( ski_resort_t *resort );
 static void board_passengers( ski_resort_t *resort, int stop_idx );
 static void drive_skibus( ski_resort_t *resort, journal_t *journal );
 
-int rand_number( int max ) { return ( rand() % max ) + 1; }
+void set_rand_seed() {
+    static bool initialized = 0;
+    if ( !initialized ) {
+        srand( time( NULL ) + getpid() );
+        initialized = 1;
+    }
+}
+int rand_number( int max ) {
+    set_rand_seed();
+    return ( rand() % max ) + 1;
+}
 
 static int init_skibus( skibus_t *bus, arguments_t *args ) {
     bus->capacity = args->bus_capacity;
@@ -143,8 +154,6 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     resort->skiers_at_resort = 0;
     resort->max_walk_to_stop_time = args->max_walk_to_stop_time;
     resort->stops_amount = args->stops_amount;
-
-#include <stddef.h>
 
     size_t stops_size = sizeof( bus_stop_t ) * resort->stops_amount;
     if ( init_shared_var( (void **)&resort->stops, stops_size,
