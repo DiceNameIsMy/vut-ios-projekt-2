@@ -2,13 +2,12 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
-#include <time.h>
 #include <unistd.h>
 
 void set_rand_seed() {
     static bool initialized = 0;
     if ( !initialized ) {
-        srand( time( NULL ) + getpid() );
+        srand( getpid() );
         initialized = 1;
     }
 }
