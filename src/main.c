@@ -86,10 +86,10 @@ int main( int argc, char *argv[] ) {
     }
 
     if ( run_simulation( &args ) == -1 ) {
-        fclose( args.output );
+        (void)fclose( args.output );
         return EXIT_FAILURE;
     }
-    fclose( args.output );
+    (void)fclose( args.output );
     return EXIT_SUCCESS;
 }
 
