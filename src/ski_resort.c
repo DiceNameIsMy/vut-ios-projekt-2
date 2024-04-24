@@ -11,6 +11,7 @@
 #include "../include/sharing.h"
 
 #define SHM_SKI_RESORT_START_LOCK_NAME "/ski_resort_start_lock"
+#define SHM_SKI_RESORT_STOPS_NAME "/ski_resort_stops"
 
 #define SHM_SKIBUS_IN_DONE_NAME "/skibus_in_done"
 #define SHM_SKIBUS_OUT_NAME "/skibus_out"
@@ -141,21 +142,25 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
     resort->skiers_at_resort = 0;
     resort->max_walk_to_stop_time = args->max_walk_to_stop_time;
     resort->stops_amount = args->stops_amount;
-    resort->stops = malloc( sizeof( bus_stop_t ) * resort->stops_amount );
-    if ( resort->stops == NULL ) {
+
+    size_t stops_size = sizeof( bus_stop_t ) * resort->stops_amount;
+    if ( init_shared_var( (void **)&resort->stops, stops_size,
+                          SHM_SKI_RESORT_STOPS_NAME ) == -1 ) {
         return -1;
     }
 
     if ( init_semaphore( &resort->start_lock, 0,
                          SHM_SKI_RESORT_START_LOCK_NAME ) == -1 ) {
-        free( resort->stops );
+        destroy_shared_var( (void **)&resort->stops, stops_size,
+                            SHM_SKI_RESORT_STOPS_NAME );
         return -1;
     }
 
     if ( init_skibus( &resort->bus, args ) == -1 ) {
         destroy_semaphore( &resort->start_lock,
                            SHM_SKI_RESORT_START_LOCK_NAME );
-        free( resort->stops );
+        destroy_shared_var( (void **)&resort->stops, stops_size,
+                            SHM_SKI_RESORT_STOPS_NAME );
         return -1;
     }
     int stop_id = 0;
@@ -171,7 +176,8 @@ int init_ski_resort( arguments_t *args, ski_resort_t *resort ) {
             destroy_skibus( &resort->bus );
             destroy_semaphore( &resort->start_lock,
                                SHM_SKI_RESORT_START_LOCK_NAME );
-            free( resort->stops );
+            destroy_shared_var( (void **)&resort->stops, stops_size,
+                                SHM_SKI_RESORT_STOPS_NAME );
             return -1;
         }
         resort->stops[ stop_id ] = bus_stop;
@@ -206,7 +212,9 @@ void destroy_ski_resort( ski_resort_t *resort ) {
         stop_id++;
     }
 
-    free( resort->stops );
+    size_t stops_size = sizeof( bus_stop_t ) * resort->stops_amount;
+    destroy_shared_var( (void **)&resort->stops, stops_size,
+                        SHM_SKI_RESORT_STOPS_NAME );
 }
 
 static void let_passengers_out( ski_resort_t *resort ) {
